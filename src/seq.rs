@@ -1,28 +1,32 @@
 
 #[macro_export]
 macro_rules! easy_iter {
-    ($item:ident: $($target:pat => $($e:ident),*);+) => {
-        struct Z { index : usize }
-        impl Iterator for Z {
-            type Item = ;
+    ($item:ident: $t:ty = $($target:pat => $($e:ident),*);+) => {
+        {
+            struct Z { index : usize, item : $t }
+            impl Iterator for Z {
+                type Item = $t;
 
-            fn next(&mut self) -> Option<Self::Item> {
-                match self.? { $( 
+                fn next(&mut self) -> Option<Self::Item> {
+                    match self.item { $( 
 
-                    $target => { 
-                        let mut x : usize = 0;
-                        $(
-                            if self.index == x {
-                                self.index += 1;
-                                return Some($e)
-                            }
-                            x =+ 1;
-                        )* 
-                    },
-
-                )+ }
-            }
-        } 
+                        $target => { 
+                            let mut x : usize = 0;
+                            $(
+                                if self.index == x {
+                                    self.index += 1;
+                                    return Some($e)
+                                }
+                                x =+ 1;
+                            )* 
+                        },
+                        _ => { return None; }
+                    )+ }
+                    None
+                }
+            } 
+            Z { index: 0, item: $item }
+        }
     };
 }
 
@@ -56,13 +60,15 @@ mod test {
 
     #[test]
     fn blarg() {
+        #[derive(Debug)]
         enum X {
-            A(u8, u8, u8),
-            B(u8, u8),
+            A(Box<X>, Box<X>),
+            B(Box<X>),
+            L(u8),
         }
 
-        let x = X::A(1, 2, 7);
-        let y = X::B(1, 4);
-        println!("{:?}", easy_iter!(y: X::A(a, b, _) => a, b ; X::B(a, b) => a, b));
+        let x = X::A(Box::new(X::L(0)), Box::new(X::L(1)));
+
+        let w = easy_iter!(x: X = X::A(a, b) => *a, *b ; X::B(a) => *a);
     }
 }
