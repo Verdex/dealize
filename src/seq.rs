@@ -34,7 +34,6 @@ macro_rules! unravel {
     };
 }
 
-
 pub struct Seq<T> {
     q : Vec<T>,
 }
@@ -47,6 +46,23 @@ pub trait Seqy<'a> {
     }
 }
 
+impl<'a, T> Iterator for Seq<&'a T> where T : Seqy<'a> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.q.pop() {
+            Some(x) => {
+                let mut nexts = x.seq_next();
+                for w in nexts {
+                    self.q.push(w);
+                }
+                Some(x) 
+            },
+            None => None,
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -56,6 +72,38 @@ mod test {
         A(Box<X>, Box<X>),
         B(Box<X>),
         L(u8),
+    }
+
+    fn a(x : X, y : X) -> X {
+        X::A(Box::new(x), Box::new(y))
+    }
+
+    fn b(x : X) -> X {
+        X::B(Box::new(x))
+    }
+
+    fn l(x : u8) -> X {
+        X::L(x)
+    }
+
+    impl<'a> Seqy<'a> for X {
+        fn seq_next(&'a self) -> impl Iterator<Item = &'a Self> {
+            unravel!(self: X = X::A(a, b) => a, b ; X::B(a) => a)
+        }
+    }
+
+    #[test]
+    fn should_sequence_seqy() {
+        let input = a(a(b(l(1)), l(2)), b(l(3)));
+        let output = input.to_seq().collect::<Vec<_>>();
+        assert_eq!(output.len(), 7);
+        assert_eq!(output[0], &a(a(b(l(1)), l(2)), b(l(3))));
+        assert_eq!(output[1], &b(l(3)));
+        assert_eq!(output[2], &l(3));
+        assert_eq!(output[3], &a(b(l(1)), l(2)));
+        assert_eq!(output[4], &l(2));
+        assert_eq!(output[5], &b(l(1)));
+        assert_eq!(output[6], &l(1));
     }
 
     #[test]
