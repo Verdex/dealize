@@ -1,10 +1,13 @@
 
 #[macro_export]
-macro_rules! easy_iter {
-    ($item:ident: $t:ty = $($target:pat => $($e:expr),*);+) => {
+macro_rules! unravel {
+    ($item:ident : $t:ty = $($target:pat => $($e:expr),*);+) => {
         {
-            struct Z<'a> { index : usize, item : &'a $t }
-            impl<'a> Iterator for Z<'a> {
+            use std::borrow::Borrow;
+
+            #[derive(Debug)]
+            struct Unraveler<'a> { index : usize, item : &'a $t }
+            impl<'a> Iterator for Unraveler<'a> {
                 type Item = &'a $t;
 
                 fn next(&mut self) -> Option<Self::Item> {
@@ -20,13 +23,13 @@ macro_rules! easy_iter {
                                 x += 1;
                             )* 
                         },
-                        
+                    )+    
                         _ => { return None; },
-                    )+ }
+                    }
                     None
                 }
             } 
-            Z { index: 0, item: &$item }
+            Unraveler { index: 0, item: $item.borrow() }
         }
     };
 }
@@ -44,36 +47,29 @@ pub trait Seqy<'a> {
     }
 }
 
-fn blargy() -> impl Iterator<Item = u8> {
-    struct Z { }
-    impl Iterator for Z {
-        type Item = u8;
-        fn next(&mut self) -> Option<Self::Item> { None }
-    }
-
-    Z{ }
-}
-
-
 #[cfg(test)]
 mod test {
     use super::*;
 
+    #[derive(Debug, PartialEq)]
+    enum X {
+        A(Box<X>, Box<X>),
+        B(Box<X>),
+        L(u8),
+    }
+
     #[test]
-    fn blarg() {
-        #[derive(Debug)]
-        enum X {
-            A(Box<X>, Box<X>),
-            B(Box<X>),
-            L(u8),
-        }
+    fn should_unravel() {
+        let x = X::A(Box::new(X::L(0)), Box::new(X::B(Box::new(X::L(1)))));
+        let is = unravel!(x: X = X::A(a, b) => a, b ; X::B(a) => a).collect::<Vec<_>>();
+        assert_eq!(is.len(), 2);
+        assert_eq!(is[0], &X::L(0));
+        assert_eq!(is[1], &X::B(Box::new(X::L(1))));
 
-        let x = X::A(Box::new(X::L(0)), Box::new(X::L(1)));
+        let y = is[1];
 
-        let w = easy_iter!(x: X = X::A(a, b) => a, b ; X::B(a) => a);
-
-        for ww in w {
-            println!("{:?}", ww);
-        }
+        let is = unravel!(y: X = X::A(a, b) => a, b ; X::B(a) => a).collect::<Vec<_>>();
+        assert_eq!(is.len(), 1);
+        assert_eq!(is[0], &X::L(1));
     }
 }
