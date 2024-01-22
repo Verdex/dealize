@@ -1,11 +1,11 @@
 
 #[macro_export]
 macro_rules! easy_iter {
-    ($item:ident: $t:ty = $($target:pat => $($e:ident),*);+) => {
+    ($item:ident: $t:ty = $($target:pat => $($e:expr),*);+) => {
         {
-            struct Z { index : usize, item : $t }
-            impl Iterator for Z {
-                type Item = $t;
+            struct Z<'a> { index : usize, item : &'a $t }
+            impl<'a> Iterator for Z<'a> {
+                type Item = &'a $t;
 
                 fn next(&mut self) -> Option<Self::Item> {
                     match self.item { $( 
@@ -17,15 +17,16 @@ macro_rules! easy_iter {
                                     self.index += 1;
                                     return Some($e)
                                 }
-                                x =+ 1;
+                                x += 1;
                             )* 
                         },
-                        _ => { return None; }
+                        
+                        _ => { return None; },
                     )+ }
                     None
                 }
             } 
-            Z { index: 0, item: $item }
+            Z { index: 0, item: &$item }
         }
     };
 }
@@ -69,6 +70,10 @@ mod test {
 
         let x = X::A(Box::new(X::L(0)), Box::new(X::L(1)));
 
-        let w = easy_iter!(x: X = X::A(a, b) => *a, *b ; X::B(a) => *a);
+        let w = easy_iter!(x: X = X::A(a, b) => a, b ; X::B(a) => a);
+
+        for ww in w {
+            println!("{:?}", ww);
+        }
     }
 }
