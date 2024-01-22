@@ -10,6 +10,7 @@ macro_rules! unravel {
             impl<'a> Iterator for Unraveler<'a> {
                 type Item = &'a $t;
 
+                #[allow(unused_assignments)]
                 fn next(&mut self) -> Option<Self::Item> {
                     match self.item { $( 
 
@@ -52,7 +53,7 @@ impl<'a, T> Iterator for Seq<&'a T> where T : Seqy<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.q.pop() {
             Some(x) => {
-                let mut nexts = x.seq_next();
+                let nexts = x.seq_next();
                 for w in nexts {
                     self.q.push(w);
                 }
