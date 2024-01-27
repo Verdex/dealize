@@ -5,7 +5,6 @@ macro_rules! unravel {
         {
             use std::borrow::Borrow;
 
-            #[derive(Debug)]
             struct Unraveler<'a> { index : usize, item : &'a $t }
             impl<'a> Iterator for Unraveler<'a> {
                 type Item = &'a $t;
