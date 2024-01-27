@@ -120,4 +120,11 @@ mod test {
         assert_eq!(is.len(), 1);
         assert_eq!(is[0], &X::L(1));
     }
+
+    #[test]
+    fn should_unravel_variable_length_constructor() {
+        // W(W, Vec<W>)
+        assert!(false);
+
+    }
 }
