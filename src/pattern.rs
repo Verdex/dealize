@@ -38,7 +38,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
             let data_kind = data.kind();
             match (pattern, data_kind) {
                 (Pattern::Atom(a), MatchKind::Atom(b)) if &a == b => { /* pass */ },
-                _ => { return None; },
+                _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
         }
         Some(self.matches.clone())
