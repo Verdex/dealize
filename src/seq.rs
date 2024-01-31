@@ -11,7 +11,9 @@ macro_rules! unravel {
 
                 #[allow(unused_assignments)]
                 fn next(&mut self) -> Option<Self::Item> {
-                    match self.item { $( 
+                    match self.item { 
+
+                        $( 
 
                         $target => { 
                             let mut x : usize = 0;
@@ -23,7 +25,8 @@ macro_rules! unravel {
                                 x += 1;
                             )* 
                         },
-                    )+    
+
+                        )+    
                         _ => { return None; },
                     }
                     None
