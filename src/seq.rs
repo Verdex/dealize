@@ -5,7 +5,7 @@ macro_rules! unravel {
         {
             use std::borrow::Borrow;
 
-            struct Unraveler<'a> { index : usize, item : &'a $t, incremental : Option<Box<dyn Iterator<Item = &'a $t>>> }
+            struct Unraveler<'a> { index : usize, item : &'a $t }
             impl<'a> Iterator for Unraveler<'a> {
                 type Item = &'a $t;
 
@@ -34,7 +34,7 @@ macro_rules! unravel {
                     None
                 }
             } 
-            Unraveler { index: 0, item: $item.borrow(), incremental: None }
+            Unraveler { index: 0, item: $item.borrow() }
         }
     };
 }
