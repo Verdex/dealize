@@ -11,16 +11,18 @@ macro_rules! unravel {
 
                 #[allow(unused_assignments)]
                 fn next(&mut self) -> Option<Self::Item> {
+
                     match self.item { 
 
                         $( 
 
                         $target => { 
+
                             let mut x : usize = 0;
                             $(
                                 if self.index == x {
                                     self.index += 1;
-                                    return Some($e)
+                                    return Some($e);
                                 }
                                 x += 1;
                             )* 
