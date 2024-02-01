@@ -43,7 +43,7 @@ pub struct Seq<T> {
     q : Vec<T>,
 }
 
-pub trait Seqy<'a> {
+pub trait Seqable<'a> {
     fn seq_next(&'a self) -> impl Iterator<Item = &'a Self>;
 
     fn to_seq(&'a self) -> Seq<&'a Self> {
@@ -51,7 +51,7 @@ pub trait Seqy<'a> {
     }
 }
 
-impl<'a, T> Iterator for Seq<&'a T> where T : Seqy<'a> {
+impl<'a, T> Iterator for Seq<&'a T> where T : Seqable<'a> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -91,14 +91,14 @@ mod test {
         X::L(x)
     }
 
-    impl<'a> Seqy<'a> for X {
+    impl<'a> Seqable<'a> for X {
         fn seq_next(&'a self) -> impl Iterator<Item = &'a Self> {
             unravel!(self: X = X::A(a, b) => a, b ; X::B(a) => a)
         }
     }
 
     #[test]
-    fn should_sequence_seqy() {
+    fn should_sequence_seqable() {
         let input = a(a(b(l(1)), l(2)), b(l(3)));
         let output = input.to_seq().collect::<Vec<_>>();
         assert_eq!(output.len(), 7);
@@ -124,12 +124,5 @@ mod test {
         let is = unravel!(y: X = X::A(a, b) => a, b ; X::B(a) => a).collect::<Vec<_>>();
         assert_eq!(is.len(), 1);
         assert_eq!(is[0], &X::L(1));
-    }
-
-    #[test]
-    fn should_unravel_variable_length_constructor() {
-        // W(W, Vec<W>)
-        assert!(false);
-
     }
 }
