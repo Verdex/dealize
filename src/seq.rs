@@ -53,7 +53,6 @@ pub trait Seqable<'a> {
 
 impl<'a, T> Iterator for Seq<&'a T> where T : Seqable<'a> {
     type Item = &'a T;
-
     fn next(&mut self) -> Option<Self::Item> {
         match self.q.pop() {
             Some(x) => {
@@ -92,7 +91,7 @@ mod test {
     }
 
     impl<'a> Seqable<'a> for X {
-        fn seq_next(&'a self) -> impl Iterator<Item = &'a Self> {
+        fn seq_next(&'a self) -> impl Iterator<Item = &'a X> {
             unravel!(self: X = X::A(a, b) => a, b ; X::B(a) => a)
         }
     }
