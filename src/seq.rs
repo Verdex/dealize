@@ -5,7 +5,7 @@ pub struct Seq<T> {
 }
 
 pub trait Seqable<'a> {
-    fn seq_next(&'a self) -> impl Iterator<Item = &'a Self>;
+    fn seq_next(&'a self) -> Box<dyn Iterator<Item = &'a Self>>;
 
     fn to_seq(&'a self) -> Seq<&'a Self> {
         Seq { q : vec![ self ] }
