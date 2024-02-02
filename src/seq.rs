@@ -1,43 +1,4 @@
 
-#[macro_export]
-macro_rules! unravel {
-    ($item:ident : $t:ty = $($target:pat => $($e:expr),*);+) => {
-        {
-            use std::borrow::Borrow;
-
-            struct Unraveler<'a> { index : usize, item : &'a $t }
-            impl<'a> Iterator for Unraveler<'a> {
-                type Item = &'a $t;
-
-                #[allow(unused_assignments)]
-                fn next(&mut self) -> Option<Self::Item> {
-
-                    match self.item { 
-
-                        $( 
-
-                        $target => { 
-
-                            let mut x : usize = 0;
-                            $(
-                                if self.index == x {
-                                    self.index += 1;
-                                    return Some($e);
-                                }
-                                x += 1;
-                            )* 
-                        },
-
-                        )+    
-                        _ => { return None; },
-                    }
-                    None
-                }
-            } 
-            Unraveler { index: 0, item: $item.borrow() }
-        }
-    };
-}
 
 pub struct Seq<T> {
     q : Vec<T>,
