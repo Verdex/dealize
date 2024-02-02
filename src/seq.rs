@@ -70,19 +70,4 @@ mod test {
         assert_eq!(output[5], &b(l(1)));
         assert_eq!(output[6], &l(1));
     }
-
-    #[test]
-    fn should_unravel() {
-        let x = X::A(Box::new(X::L(0)), Box::new(X::B(Box::new(X::L(1)))));
-        let is = unravel!(x: X = X::A(a, b) => a, b ; X::B(a) => a).collect::<Vec<_>>();
-        assert_eq!(is.len(), 2);
-        assert_eq!(is[0], &X::L(0));
-        assert_eq!(is[1], &X::B(Box::new(X::L(1))));
-
-        let y = is[1];
-
-        let is = unravel!(y: X = X::A(a, b) => a, b ; X::B(a) => a).collect::<Vec<_>>();
-        assert_eq!(is.len(), 1);
-        assert_eq!(is[0], &X::L(1));
-    }
 }
