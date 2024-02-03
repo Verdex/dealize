@@ -79,6 +79,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
         if self.work.len() == 0 { 
             // Note:  Switch to alternative
             let mut new = self.alternatives.pop().unwrap();
+            new.alternatives.append(&mut self.alternatives);
             std::mem::swap(self, &mut new);
         }
         while let Some((pattern, data)) = self.work.pop() {
@@ -100,6 +101,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             if self.alternatives.len() > 0 {
                                 // TODO test
                                 let mut new = self.alternatives.pop().unwrap();
+                                new.alternatives.append(&mut self.alternatives);
                                 std::mem::swap(self, &mut new);
                                 continue;
                             }
@@ -150,6 +152,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                     if self.alternatives.len() > 0 {
                         // TODO test
                         let mut new = self.alternatives.pop().unwrap();
+                        new.alternatives.append(&mut self.alternatives);
                         std::mem::swap(self, &mut new);
                         continue;
                     }
