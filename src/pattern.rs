@@ -5,7 +5,7 @@ pub enum MatchKind<'a, TSelf : Matchable> {
     List(&'a [TSelf]),
 }
 
-pub trait Matchable {
+pub trait Matchable : PartialEq {
     type Atom : Clone + PartialEq;
 
     fn kind<'a>(&'a self) -> MatchKind<'a, Self> where Self : Sized;
@@ -46,6 +46,10 @@ pub fn cons<T : Clone, S : AsRef<str>>(name : S, params : &[Pattern<T>]) -> Patt
     Pattern::Cons(name.as_ref().into(), params.to_vec())
 }
 
+pub fn template<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
+    Pattern::TemplateVar(name.as_ref().into())
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
@@ -62,6 +66,20 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
             let data_kind = data.kind();
             match (pattern, data_kind) {
                 (Pattern::CaptureVar(name), _) => { self.matches.push((name.clone(), data)); },
+                (Pattern::TemplateVar(name), _) => {
+                    let mut result = None;
+                    for (k, v) in &self.matches {
+                        if k == &name {
+                            result = Some(*v);
+                            break;
+                        }
+                    }
+                    match result {
+                        Some(v) if v == data => { /* pass */ },
+                        Some(_) => { return None; }, // TODO this needs to be different when there are alternatives
+                        None => { panic!("Used template variable with uncaptured name: {}", name); },
+                    }
+                },
                 (Pattern::Wild, _) => { /* pass */ },
                 (Pattern::Atom(p), MatchKind::Atom(d)) if &p == d => { /* pass */ },
                 (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
