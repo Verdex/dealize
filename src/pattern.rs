@@ -79,6 +79,7 @@ pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matc
 
 #[cfg(test)]
 mod test {
+    use std::collections::HashMap;
     use super::*;
 
     #[derive(Debug, PartialEq)]
@@ -109,8 +110,8 @@ mod test {
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].len(), 1);
-        assert_eq!(results[0][0].0, "x".into());
-        assert_eq!(results[0][0].1, &Data::A(8));
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(8));
     }
     
     #[test]
@@ -135,5 +136,24 @@ mod test {
 
     #[test]
     fn should_find_exact_list() {
+        let pattern = exact_list(&[atom(8), wild()]);
+        let data = Data::List(vec![Data::A(8), Data::A(0)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 0);
+    }
+
+    #[test]
+    fn should_capture_from_exact_list() {
+        let pattern = exact_list(&[capture("x"), wild(), capture("y")]);
+        let data = Data::List(vec![Data::A(8), Data::A(0), Data::A(9)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 2);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(8));
+        assert_eq!(*dict.get("y").unwrap(), &Data::A(9));
     }
 }
