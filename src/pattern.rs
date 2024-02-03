@@ -98,6 +98,27 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         self.work.push(w);
                     }
                 },
+                (Pattern::ListPath(ps), MatchKind::List(ds)) if ps.len() <= ds.len() => {
+                    let p_len = ps.len();
+
+                    let mut alts = vec![];
+                    for i in (1..=(ds.len() - p_len)).rev() {
+                        let mut alt = self.clone();
+                        let d_target = &ds[i..(i + p_len)];
+
+                        for w in ps.clone().into_iter().zip(d_target.into_iter()).rev() {
+                            alt.work.push(w);
+                        }
+
+                        alts.push(alt);
+                    }
+                    self.alternates.append(&mut alts);
+
+                    let d_target = &ds[0..p_len];
+                    for w in ps.into_iter().zip(d_target.into_iter()).rev() {
+                        self.work.push(w);
+                    }
+                },
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
         }
