@@ -27,6 +27,18 @@ pub enum Pattern<TAtom : Clone> {
     // TODO and/or?
 }
 
+pub fn atom<T : Clone>(t : T) -> Pattern<T> {
+    Pattern::Atom(t)
+}
+
+pub fn wild<T : Clone>() -> Pattern<T> {
+    Pattern::Wild
+}
+
+pub fn capture<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
+    Pattern::CaptureVar(name.as_ref().into())
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
@@ -44,7 +56,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
             match (pattern, data_kind) {
                 (Pattern::CaptureVar(name), _) => { self.matches.push((name.clone(), data)); },
                 (Pattern::Wild, _) => { /* pass */ },
-                (Pattern::Atom(a), MatchKind::Atom(b)) if &a == b => { /* pass */ },
+                (Pattern::Atom(p), MatchKind::Atom(d)) if &p == d => { /* pass */ },
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
         }
