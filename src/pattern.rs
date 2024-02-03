@@ -236,4 +236,69 @@ mod test {
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a);
     }
+
+    #[test]
+    fn should_not_find_on_non_matching_atom() {
+        let pattern = atom(8);
+        let data = Data::A(1);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_on_non_matching_cons() {
+        let pattern = cons("ConsA", &[wild(), wild()]);
+        let data = Data::ConsB(Box::new(Data::A(1)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+    
+    #[test]
+    fn should_not_find_on_non_matching_cons_internal_length() {
+        let pattern = cons("ConsA", &[wild()]);
+        let data = Data::ConsA(Box::new(Data::A(1)), Box::new(Data::A(1)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_on_non_matching_cons_internals() {
+        let pattern = cons("ConsA", &[wild(), atom(0)]);
+        let data = Data::ConsA(Box::new(Data::A(1)), Box::new(Data::A(1)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_on_non_matching_list_length() {
+        let pattern = exact_list(&[wild()]);
+        let data = Data::List(vec![Data::A(0), Data::A(0)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_on_non_matching_list_internals() {
+        let pattern = exact_list(&[wild(), atom(1)]);
+        let data = Data::List(vec![Data::A(0), Data::A(0)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_on_non_matching_template() {
+        let pattern = cons("ConsA", &[capture("x"), template("x")]);
+        let a = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let b = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(1)));
+        let data = Data::ConsA(Box::new(a), Box::new(b));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
 }
