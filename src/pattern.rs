@@ -50,6 +50,10 @@ pub fn template<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
     Pattern::TemplateVar(name.as_ref().into())
 }
 
+pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+    Pattern::ListPath(patterns.to_vec())
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
