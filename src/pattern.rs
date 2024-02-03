@@ -16,8 +16,7 @@ pub enum Pattern<TAtom : Clone> {
     Atom(TAtom),
     Wild,
     CaptureVar(Box<str>),
-    Cons { name: Box<str>, params: Vec<Pattern<TAtom>> },
-    // TODO cons variants?
+    Cons(Box<str>, Vec<Pattern<TAtom>>),
     ExactList(Vec<Pattern<TAtom>>),
     ListPath(Vec<Pattern<TAtom>>),
     PathNext,
@@ -43,6 +42,10 @@ pub fn exact_list<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
     Pattern::ExactList(patterns.to_vec())
 }
 
+pub fn cons<T : Clone, S : AsRef<str>>(name : S, params : &[Pattern<T>]) -> Pattern<T> {
+    Pattern::Cons(name.as_ref().into(), params.to_vec())
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
@@ -63,6 +66,18 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::Atom(p), MatchKind::Atom(d)) if &p == d => { /* pass */ },
                 (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
                     for w in ps.into_iter().zip(ds.iter()) {
+                        self.work.push(w);
+                    }
+                },
+                (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
+                    for w in ps.into_iter().zip(ds.iter()) {
+                        self.work.push(w);
+                    }
+                },
+                (Pattern::Cons(p_name, p_params), MatchKind::Cons(d_name, d_params)) 
+                    if p_name == d_name.into() && p_params.len() == d_params.len() => {
+
+                    for w in p_params.into_iter().zip(d_params.into_iter()) {
                         self.work.push(w);
                     }
                 },
@@ -155,5 +170,27 @@ mod test {
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &Data::A(8));
         assert_eq!(*dict.get("y").unwrap(), &Data::A(9));
+    }
+
+    #[test]
+    fn should_find_cons() {
+        let pattern = cons("ConsA", &[atom(8), wild()]);
+        let data = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 0);
+    }
+
+    #[test]
+    fn should_capture_from_cons() {
+        let pattern = cons("ConsA", &[atom(8), capture("x")]);
+        let data = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(0));
     }
 }
