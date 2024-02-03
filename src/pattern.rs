@@ -310,6 +310,21 @@ mod test {
     }
 
     #[test]
+    fn should_capture_multiple_list_paths() {
+        let pattern = list_path(&[atom(0), capture("x")]);
+        let data = Data::List(vec![Data::A(0), Data::A(1), Data::A(0), Data::A(2)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(1));
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(2));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = Data::A(1);
