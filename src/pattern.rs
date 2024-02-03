@@ -1,14 +1,14 @@
 
-pub enum MatchKind<'a, TAtom, TSelf> {
-    Atom(TAtom),
-    Cons(&'a str, TSelf),
-    List(TSelf),
+pub enum MatchKind<'a, TSelf : Matchable> {
+    Atom(&'a TSelf::Atom),
+    Cons(&'a str, Vec<&'a TSelf>),
+    List(&'a [TSelf]),
 }
 
 pub trait Matchable {
     type Atom : Clone + PartialEq;
 
-    fn kind<'a>(&'a self) -> MatchKind<'a, &'a Self::Atom, impl Iterator<Item = &'a Self>>;
+    fn kind<'a>(&'a self) -> MatchKind<'a, Self> where Self : Sized;
 }
 
 #[derive(Debug, Clone)]
@@ -23,6 +23,7 @@ pub enum Pattern<TAtom : Clone> {
     Path(Vec<Pattern<TAtom>>),
     TemplateVar(Box<str>), 
     // TODO match with 
+    // TODO and/or?
 }
 
 pub struct Matches<'a, M, A : Clone> {
@@ -63,21 +64,14 @@ mod test {
         List(Vec<Data>),
     }
 
-    impl Data {
-        pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Self> {
-            //TODO
-            std::iter::once(self)
-        }
-    }
-
     impl Matchable for Data {
         type Atom = u8;
-        fn kind<'a>(&'a self) -> MatchKind<'a, &'a Self::Atom, impl Iterator<Item = &'a Self>> {
+        fn kind<'a>(&'a self) -> MatchKind<'a, Self> where Self : Sized {
             match self { 
                 Data::A(ref x) => MatchKind::Atom(x),
-                x @ Data::ConsA(_, _) => MatchKind::Cons("ConsA", x.iter()),
-                x @ Data::ConsB(_) => MatchKind::Cons("ConsB", x.iter()),
-                _ => todo!(),
+                Data::ConsA(a, b) => MatchKind::Cons("ConsA", vec![&**a, &**b]),
+                Data::ConsB(a) => MatchKind::Cons("ConsB", vec![&**a]),
+                Data::List(l) => MatchKind::List(&l[..]),
             }
         }
     }
