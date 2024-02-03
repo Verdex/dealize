@@ -17,6 +17,7 @@ pub enum Pattern<TAtom : Clone> {
     Wild,
     CaptureVar(Box<str>),
     Cons { name: Box<str>, params: Vec<Pattern<TAtom>> },
+    // TODO cons variants?
     ExactList(Vec<Pattern<TAtom>>),
     ListPath(Vec<Pattern<TAtom>>),
     PathNext,
@@ -42,6 +43,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
             let data_kind = data.kind();
             match (pattern, data_kind) {
                 (Pattern::CaptureVar(name), _) => { self.matches.push((name.clone(), data)); },
+                (Pattern::Wild, _) => { /* pass */ },
                 (Pattern::Atom(a), MatchKind::Atom(b)) if &a == b => { /* pass */ },
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
@@ -93,6 +95,16 @@ mod test {
     #[test]
     fn should_find_single_atom() {
         let pattern = Pattern::Atom(8);
+        let data = Data::A(8);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 0);
+    }
+
+    #[test]
+    fn should_find_wild() {
+        let pattern = Pattern::Wild;
         let data = Data::A(8);
         let results = find(pattern, &data).collect::<Vec<_>>();
 
