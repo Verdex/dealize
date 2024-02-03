@@ -57,6 +57,16 @@ pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
+    alternates : Vec<Matches<'a, M, A>>,
+}
+
+impl<'a, M, A : Clone> Clone for Matches<'a, M, A> {
+    fn clone(&self) -> Self {
+        Matches { matches: self.matches.clone()
+                , work: self.work.clone()
+                , alternates: self.alternates.clone()
+                }
+    }
 }
 
 impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
@@ -127,7 +137,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 }
 
 pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matches<'a, M, M::Atom> {
-    Matches { matches : vec![], work : vec![(pattern, data)] }
+    Matches { matches : vec![], work : vec![(pattern, data)], alternates: vec![] }
 }
 
 #[cfg(test)]
