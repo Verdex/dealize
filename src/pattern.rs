@@ -39,6 +39,10 @@ pub fn capture<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
     Pattern::CaptureVar(name.as_ref().into())
 }
 
+pub fn exact_list<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+    Pattern::ExactList(patterns.to_vec())
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
@@ -57,6 +61,11 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::CaptureVar(name), _) => { self.matches.push((name.clone(), data)); },
                 (Pattern::Wild, _) => { /* pass */ },
                 (Pattern::Atom(p), MatchKind::Atom(d)) if &p == d => { /* pass */ },
+                (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
+                    for w in ps.into_iter().zip(ds.iter()) {
+                        self.work.push(w);
+                    }
+                },
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
         }
@@ -122,5 +131,9 @@ mod test {
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].len(), 0);
+    }
+
+    #[test]
+    fn should_find_exact_list() {
     }
 }
