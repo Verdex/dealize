@@ -17,10 +17,8 @@ impl<'a, T> Iterator for Seq<&'a T> where T : Seqable<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.q.pop() {
             Some(x) => {
-                let nexts = x.seq_next();
-                for w in nexts {
-                    self.q.push(w);
-                }
+                let mut nexts = x.seq_next();
+                self.q.append(&mut nexts);
                 Some(x) 
             },
             None => None,
