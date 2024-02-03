@@ -55,7 +55,6 @@ pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matc
 #[cfg(test)]
 mod test {
     use super::*;
-    use crate::unravel;
 
     enum Data {
         A(u8),
@@ -66,7 +65,8 @@ mod test {
 
     impl Data {
         pub fn iter<'a>(&'a self) -> impl Iterator<Item = &'a Self> {
-            unravel!(self: Data = Data::ConsA(a, b) => a, b ; Data::ConsB(a) => a)
+            //TODO
+            std::iter::once(self)
         }
     }
 
