@@ -132,7 +132,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
         }
-        Some(self.matches.clone())
+        Some(std::mem::replace(&mut self.matches, vec![]))
     }
 }
 
