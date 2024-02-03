@@ -94,7 +94,7 @@ mod test {
 
     #[test]
     fn should_capture_single_atom() {
-        let pattern = Pattern::CaptureVar("x".into());
+        let pattern = capture("x");
         let data = Data::A(8);
         let results = find(pattern, &data).collect::<Vec<_>>();
 
@@ -106,7 +106,7 @@ mod test {
     
     #[test]
     fn should_find_single_atom() {
-        let pattern = Pattern::Atom(8);
+        let pattern = atom(8);
         let data = Data::A(8);
         let results = find(pattern, &data).collect::<Vec<_>>();
 
@@ -116,7 +116,7 @@ mod test {
 
     #[test]
     fn should_find_wild() {
-        let pattern = Pattern::Wild;
+        let pattern = wild();
         let data = Data::A(8);
         let results = find(pattern, &data).collect::<Vec<_>>();
 
