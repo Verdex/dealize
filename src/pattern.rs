@@ -83,12 +83,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::Wild, _) => { /* pass */ },
                 (Pattern::Atom(p), MatchKind::Atom(d)) if &p == d => { /* pass */ },
                 (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
-                    for w in ps.into_iter().zip(ds.iter()) {
-                        self.work.push(w);
-                    }
-                },
-                (Pattern::ExactList(ps), MatchKind::List(ds)) if ps.len() == ds.len() => {
-                    for w in ps.into_iter().zip(ds.iter()) {
+                    for w in ps.into_iter().zip(ds.iter()).rev() {
                         self.work.push(w);
                     }
                 },
@@ -210,5 +205,17 @@ mod test {
         assert_eq!(results[0].len(), 1);
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &Data::A(0));
+    }
+
+    #[test]
+    fn should_find_template() {
+        let pattern = exact_list(&[capture("x"), template("x")]);
+        let a = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let b = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let data = Data::List(vec![a, b]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
     }
 }
