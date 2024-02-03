@@ -299,6 +299,17 @@ mod test {
     }
 
     #[test]
+    fn should_find_multiple_list_paths() {
+        let pattern = list_path(&[atom(0), atom(1)]);
+        let data = Data::List(vec![Data::A(0), Data::A(1), Data::A(0), Data::A(1)]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 0);
+        assert_eq!(results[1].len(), 0);
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = Data::A(1);
