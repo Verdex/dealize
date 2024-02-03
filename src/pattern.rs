@@ -90,7 +90,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::Cons(p_name, p_params), MatchKind::Cons(d_name, d_params)) 
                     if p_name == d_name.into() && p_params.len() == d_params.len() => {
 
-                    for w in p_params.into_iter().zip(d_params.into_iter()) {
+                    for w in p_params.into_iter().zip(d_params.into_iter()).rev() {
                         self.work.push(w);
                     }
                 },
@@ -110,7 +110,7 @@ mod test {
     use std::collections::HashMap;
     use super::*;
 
-    #[derive(Debug, PartialEq)]
+    #[derive(Debug, PartialEq, Clone)]
     enum Data {
         A(u8),
         ConsA(Box<Data>, Box<Data>),
@@ -208,14 +208,28 @@ mod test {
     }
 
     #[test]
-    fn should_find_template() {
+    fn should_find_template_in_list() {
         let pattern = exact_list(&[capture("x"), template("x")]);
         let a = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
-        let b = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
-        let data = Data::List(vec![a, b]);
+        let data = Data::List(vec![a.clone(), a.clone()]);
         let results = find(pattern, &data).collect::<Vec<_>>();
 
         assert_eq!(results.len(), 1);
         assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a);
+    }
+
+    #[test]
+    fn should_find_template_in_cons() {
+        let pattern = cons("ConsA", &[capture("x"), template("x")]);
+        let a = Data::ConsA(Box::new(Data::A(8)), Box::new(Data::A(0)));
+        let data = Data::ConsA(Box::new(a.clone()), Box::new(a.clone()));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a);
     }
 }
