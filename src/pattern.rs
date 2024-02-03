@@ -57,14 +57,14 @@ pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
-    alternates : Vec<Matches<'a, M, A>>,
+    alternatives: Vec<Matches<'a, M, A>>,
 }
 
 impl<'a, M, A : Clone> Clone for Matches<'a, M, A> {
     fn clone(&self) -> Self {
         Matches { matches: self.matches.clone()
                 , work: self.work.clone()
-                , alternates: self.alternates.clone()
+                , alternatives: self.alternatives.clone()
                 }
     }
 }
@@ -73,7 +73,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
     type Item = Vec<(Box<str>, &'a M)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.work.len() == 0 {  // TODO ?
+        if self.work.len() == 0 && self.alternatives.len() == 0 {  // TODO ?
             return None;
         }
         while let Some((pattern, data)) = self.work.pop() {
@@ -122,14 +122,14 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 
                         alts.push(alt);
                     }
-                    self.alternates.append(&mut alts);
+                    self.alternatives.append(&mut alts);
 
                     let d_target = &ds[0..p_len];
                     for w in ps.into_iter().zip(d_target.into_iter()).rev() {
                         self.work.push(w);
                     }
                 },
-                _ => { return None; }, // TODO this needs to be different when there are alternates
+                _ => { return None; }, // TODO this needs to be different when there are alternatives 
             } 
         }
         Some(std::mem::replace(&mut self.matches, vec![]))
@@ -137,7 +137,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 }
 
 pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matches<'a, M, M::Atom> {
-    Matches { matches : vec![], work : vec![(pattern, data)], alternates: vec![] }
+    Matches { matches : vec![], work : vec![(pattern, data)], alternatives: vec![] }
 }
 
 #[cfg(test)]
