@@ -41,6 +41,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
         while let Some((pattern, data)) = self.work.pop() {
             let data_kind = data.kind();
             match (pattern, data_kind) {
+                (Pattern::CaptureVar(name), _) => { self.matches.push((name.clone(), data)); },
                 (Pattern::Atom(a), MatchKind::Atom(b)) if &a == b => { /* pass */ },
                 _ => { return None; }, // TODO this needs to be different when there are alternates
             } 
@@ -57,6 +58,7 @@ pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matc
 mod test {
     use super::*;
 
+    #[derive(Debug, PartialEq)]
     enum Data {
         A(u8),
         ConsA(Box<Data>, Box<Data>),
@@ -76,6 +78,18 @@ mod test {
         }
     }
 
+    #[test]
+    fn should_capture_single_atom() {
+        let pattern = Pattern::CaptureVar("x".into());
+        let data = Data::A(8);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        assert_eq!(results[0][0].0, "x".into());
+        assert_eq!(results[0][0].1, &Data::A(8));
+    }
+    
     #[test]
     fn should_find_single_atom() {
         let pattern = Pattern::Atom(8);
