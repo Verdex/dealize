@@ -73,8 +73,13 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
     type Item = Vec<(Box<str>, &'a M)>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        if self.work.len() == 0 && self.alternatives.len() == 0 {  // TODO ?
+        if self.work.len() == 0 && self.alternatives.len() == 0 { 
             return None;
+        }
+        if self.work.len() == 0 { 
+            // Note:  Switch to alternative
+            let mut new = self.alternatives.pop().unwrap();
+            std::mem::swap(self, &mut new);
         }
         while let Some((pattern, data)) = self.work.pop() {
             let data_kind = data.kind();
@@ -90,7 +95,18 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                     }
                     match result {
                         Some(v) if v == data => { /* pass */ },
-                        Some(_) => { return None; }, // TODO this needs to be different when there are alternatives
+                        Some(_) => { 
+                            // Note:  Switch to alternative
+                            if self.alternatives.len() > 0 {
+                                // TODO test
+                                let mut new = self.alternatives.pop().unwrap();
+                                std::mem::swap(self, &mut new);
+                                continue;
+                            }
+                            else {
+                                return None; 
+                            }
+                        }, 
                         None => { panic!("Used template variable with uncaptured name: {}", name); },
                     }
                 },
@@ -129,7 +145,18 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         self.work.push(w);
                     }
                 },
-                _ => { return None; }, // TODO this needs to be different when there are alternatives 
+                _ => {
+                    // Note:  Switch to alternative
+                    if self.alternatives.len() > 0 {
+                        // TODO test
+                        let mut new = self.alternatives.pop().unwrap();
+                        std::mem::swap(self, &mut new);
+                        continue;
+                    }
+                    else {
+                        return None; 
+                    }
+                }, 
             } 
         }
         Some(std::mem::replace(&mut self.matches, vec![]))
