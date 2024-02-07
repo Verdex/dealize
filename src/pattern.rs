@@ -325,6 +325,35 @@ mod test {
     }
 
     #[test]
+    fn should_capture_list_path_next_to_list_path() {
+        let pattern = cons("ConsA", &[list_path(&[capture("x")]), list_path(&[capture("y")])]);
+        let data = Data::ConsA(Box::new(Data::List(vec![Data::A(0), Data::A(1)])), 
+                               Box::new(Data::List(vec![Data::A(2), Data::A(3)])));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0].len(), 2);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(0));
+        assert_eq!(*dict.get("y").unwrap(), &Data::A(2));
+
+        assert_eq!(results[1].len(), 2);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(0));
+        assert_eq!(*dict.get("y").unwrap(), &Data::A(3));
+
+        assert_eq!(results[2].len(), 2);
+        let dict = results[2].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(1));
+        assert_eq!(*dict.get("y").unwrap(), &Data::A(2));
+
+        assert_eq!(results[3].len(), 2);
+        let dict = results[3].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &Data::A(1));
+        assert_eq!(*dict.get("y").unwrap(), &Data::A(3));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = Data::A(1);
