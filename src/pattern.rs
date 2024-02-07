@@ -57,15 +57,18 @@ pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
-    alternatives: Vec<Matches<'a, M, A>>,
+    alternatives: Vec<(Vec<(Box<str>, &'a M)>, Vec<(Pattern<A>, &'a M)>)>,
 }
 
-impl<'a, M, A : Clone> Clone for Matches<'a, M, A> {
-    fn clone(&self) -> Self {
-        Matches { matches: self.matches.clone()
-                , work: self.work.clone()
-                , alternatives: self.alternatives.clone()
-                }
+impl<'a, M, A : Clone> Matches<'a, M, A> {
+    fn add_alt(&mut self, matches : Vec<(Box<str>, &'a M)>, work : Vec<(Pattern<A>, &'a M)>) {
+        self.alternatives.push((matches, work));
+    }
+
+    fn switch_to_alt(&mut self) {
+        let (matches, work) = self.alternatives.pop().unwrap();
+        self.matches = matches;
+        self.work = work;
     }
 }
 
@@ -77,10 +80,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
             return None;
         }
         if self.work.len() == 0 { 
-            // Note:  Switch to alternative
-            let mut new = self.alternatives.pop().unwrap();
-            new.alternatives.append(&mut self.alternatives);
-            std::mem::swap(self, &mut new);
+            self.switch_to_alt();
         }
         while let Some((pattern, data)) = self.work.pop() {
             let data_kind = data.kind();
@@ -97,12 +97,9 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                     match result {
                         Some(v) if v == data => { /* pass */ },
                         Some(_) => { 
-                            // Note:  Switch to alternative
                             if self.alternatives.len() > 0 {
                                 // TODO test
-                                let mut new = self.alternatives.pop().unwrap();
-                                new.alternatives.append(&mut self.alternatives);
-                                std::mem::swap(self, &mut new);
+                                self.switch_to_alt();
                                 continue;
                             }
                             else {
@@ -129,18 +126,16 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::ListPath(ps), MatchKind::List(ds)) if ps.len() <= ds.len() => {
                     let p_len = ps.len();
 
-                    let mut alts = vec![];
                     for i in (1..=(ds.len() - p_len)).rev() {
-                        let mut alt = self.clone();
+                        let mut alt = self.work.clone();
                         let d_target = &ds[i..(i + p_len)];
 
                         for w in ps.clone().into_iter().zip(d_target.into_iter()).rev() {
-                            alt.work.push(w);
+                            alt.push(w);
                         }
 
-                        alts.push(alt);
+                        self.add_alt(self.matches.clone(), alt);
                     }
-                    self.alternatives.append(&mut alts);
 
                     let d_target = &ds[0..p_len];
                     for w in ps.into_iter().zip(d_target.into_iter()).rev() {
@@ -148,12 +143,9 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                     }
                 },
                 _ => {
-                    // Note:  Switch to alternative
                     if self.alternatives.len() > 0 {
                         // TODO test
-                        let mut new = self.alternatives.pop().unwrap();
-                        new.alternatives.append(&mut self.alternatives);
-                        std::mem::swap(self, &mut new);
+                        self.switch_to_alt();
                         continue;
                     }
                     else {
