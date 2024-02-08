@@ -54,6 +54,14 @@ pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
     Pattern::ListPath(patterns.to_vec())
 }
 
+pub fn path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+    Pattern::Path(patterns.to_vec())
+}
+
+pub fn next<T : Clone>() -> Pattern<T> {
+    Pattern::PathNext
+}
+
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
