@@ -65,18 +65,20 @@ pub fn next<T : Clone>() -> Pattern<T> {
 pub struct Matches<'a, M, A : Clone> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<A>, &'a M)>,
-    alternatives: Vec<(Vec<(Box<str>, &'a M)>, Vec<(Pattern<A>, &'a M)>)>,
+    nexts : Vec<&'a M>,
+    alternatives: Vec<(Vec<(Box<str>, &'a M)>, Vec<(Pattern<A>, &'a M)>, Vec<&'a M>)>,
 }
 
 impl<'a, M, A : Clone> Matches<'a, M, A> {
-    fn add_alt(&mut self, matches : Vec<(Box<str>, &'a M)>, work : Vec<(Pattern<A>, &'a M)>) {
-        self.alternatives.push((matches, work));
+    fn add_alt(&mut self, matches : Vec<(Box<str>, &'a M)>, work : Vec<(Pattern<A>, &'a M)>, nexts : Vec<&'a M>) {
+        self.alternatives.push((matches, work, nexts));
     }
 
     fn switch_to_alt(&mut self) {
-        let (matches, work) = self.alternatives.pop().unwrap();
+        let (matches, work, nexts) = self.alternatives.pop().unwrap();
         self.matches = matches;
         self.work = work;
+        self.nexts = nexts;
     }
 }
 
@@ -142,7 +144,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             alt.push(w);
                         }
 
-                        self.add_alt(self.matches.clone(), alt);
+                        self.add_alt(self.matches.clone(), alt, self.nexts.clone());
                     }
 
                     let d_target = &ds[0..p_len];
@@ -167,7 +169,11 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 }
 
 pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matches<'a, M, M::Atom> {
-    Matches { matches : vec![], work : vec![(pattern, data)], alternatives: vec![] }
+    Matches { matches : vec![]
+            , work : vec![(pattern, data)]
+            , alternatives: vec![] 
+            , nexts : vec![]
+            }
 }
 
 #[cfg(test)]
