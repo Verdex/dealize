@@ -133,6 +133,36 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         self.work.push(w);
                     }
                 },
+                (Pattern::Path(mut ps), _) => {
+                    // TODO ps.pop is the last one but we need the first one
+                    let results = find(ps.pop().unwrap(), data);
+
+                    let result = results.next();
+                    match result {
+                        // Zero matches mean that this match fails.
+                        None => { 
+                                // TODO test
+                            if self.alternatives.len() > 0 {
+                                self.switch_to_alt();
+                                continue;
+                            }
+                            else {
+                                return None; 
+                            }
+                        },
+                        Some(result) => {
+                            // add result.matches into self.matches
+                            // for the first next that guy is the data for a new path(ps[1..]) 
+                            // for all of the other nexts, those go into alternatives
+                            
+
+                        },
+                    }
+
+                },
+                (Pattern::PathNext, _) => {
+                    self.nexts.push(data);
+                },
                 (Pattern::ListPath(ps), MatchKind::List(ds)) if ps.len() <= ds.len() => {
                     let p_len = ps.len();
 
