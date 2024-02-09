@@ -133,29 +133,37 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         self.work.push(w);
                     }
                 },
+                (Pattern::Path(ps), _) if ps.len() == 0 => { /* pass */ },
                 (Pattern::Path(mut ps), _) => {
-                    // TODO ps.pop is the last one but we need the first one
-                    let results = find(ps.pop().unwrap(), data);
+                    let mut results = find(ps.remove(0), data);
 
                     let result = results.next();
                     match result {
                         // Zero matches mean that this match fails.
-                        None => { 
                                 // TODO test
-                            if self.alternatives.len() > 0 {
-                                self.switch_to_alt();
-                                continue;
-                            }
-                            else {
-                                return None; 
-                            }
+                        None if self.alternatives.len() > 0 => { 
+                            self.switch_to_alt();
+                            continue;
                         },
-                        Some(result) => {
-                            // add result.matches into self.matches
-                            // for the first next that guy is the data for a new path(ps[1..]) 
-                            // for all of the other nexts, those go into alternatives
-                            
+                        None => {
+                            return None;
+                        },
+                        Some(mut result) => {
+                            self.matches.append(&mut result);
 
+                            if self.nexts.len() != 0 {
+                                let next_data = self.nexts.remove(0);
+
+                                let next_pattern = Pattern::Path(ps[1..].to_vec());
+
+                                for next in std::mem::replace(&mut self.nexts, vec![]) {
+                                    let mut work = self.work.clone();
+                                    work.push((next_pattern.clone(), next));
+                                    self.add_alt(self.matches.clone(), work, vec![]);
+                                }
+
+                                self.work.push((next_pattern, next_data));
+                            }
                         },
                     }
 
