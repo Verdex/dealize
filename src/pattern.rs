@@ -239,6 +239,22 @@ mod test {
         }
     }
 
+    fn a(input : u8) -> Data {
+        Data::A(input)
+    }
+
+    fn ca(a : Data, b : Data) -> Data {
+        Data::ConsA(Box::new(a), Box::new(b))
+    }
+
+    fn cb(a : Data) -> Data {
+        Data::ConsB(Box::new(a))
+    }
+
+    fn l<const N : usize>(input : [Data; N]) -> Data {
+        Data::List(input.to_vec())
+    }
+
     #[test]
     fn should_capture_single_atom() {
         let pattern = capture("x");
