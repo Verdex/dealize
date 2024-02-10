@@ -151,18 +151,19 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         Some(mut result) => {
                             self.matches.append(&mut result);
 
-                            if self.nexts.len() != 0 {
-                                let next_data = self.nexts.remove(0);
+                            if results.nexts.len() != 0 {
+                                let next_data = results.nexts.remove(0);
 
-                                let next_pattern = Pattern::Path(ps[1..].to_vec());
+                                let next_pattern = Pattern::Path(ps);
 
-                                for next in std::mem::replace(&mut self.nexts, vec![]) {
+                                for next in std::mem::replace(&mut results.nexts, vec![]) {
                                     let mut work = self.work.clone();
                                     work.push((next_pattern.clone(), next));
                                     self.add_alt(self.matches.clone(), work, vec![]);
                                 }
 
                                 self.work.push((next_pattern, next_data));
+                                //self.alternatives.append(&mut results.alternatives); // TODO
                             }
                         },
                     }
