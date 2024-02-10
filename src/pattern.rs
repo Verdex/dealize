@@ -446,6 +446,30 @@ mod test {
     }
 
     #[test]
+    fn should_capture_path() {
+        let pattern = path(&[cons("ConsA", &[next(), next()]), cons("ConsA", &[next(), next()]), capture("x")]);
+        let data = ca(ca(a(0), a(1)), ca(a(2), a(3)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 4);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+
+        assert_eq!(results[2].len(), 1);
+        let dict = results[2].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(2));
+
+        assert_eq!(results[3].len(), 1);
+        let dict = results[3].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(3));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = a(1);
