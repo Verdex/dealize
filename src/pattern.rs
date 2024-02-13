@@ -245,6 +245,7 @@ mod test {
         A(u8),
         ConsA(Box<Data>, Box<Data>),
         ConsB(Box<Data>),
+        ConsC(Box<Data>, Box<Data>, Box<Data>),
         List(Vec<Data>),
     }
 
@@ -255,6 +256,7 @@ mod test {
                 Data::A(ref x) => MatchKind::Atom(x),
                 Data::ConsA(a, b) => MatchKind::Cons("ConsA", vec![&**a, &**b]),
                 Data::ConsB(a) => MatchKind::Cons("ConsB", vec![&**a]),
+                Data::ConsC(a, b, c) => MatchKind::Cons("ConsC", vec![&**a, &**b, &**c]),
                 Data::List(l) => MatchKind::List(&l[..]),
             }
         }
@@ -270,6 +272,10 @@ mod test {
 
     fn cb(a : Data) -> Data {
         Data::ConsB(Box::new(a))
+    }
+
+    fn cc(a : Data, b : Data, c : Data) -> Data {
+        Data::ConsC(Box::new(a), Box::new(b), Box::new(c))
     }
 
     fn l<const N : usize>(input : [Data; N]) -> Data {
@@ -542,6 +548,62 @@ mod test {
     }
 
     #[test]
+    fn should_capture_path_in_list_path() {
+        let pattern = list_path(&[ path(&[cons("ConsC", &[next(), atom(0), next()]), capture("x")])
+                                 , path(&[cons("ConsC", &[next(), atom(1), next()]), capture("y")])
+                                 ]);
+        let data = l([ cc(a(10), a(0), a(11))
+                     , cc(a(20), a(1), a(22)) 
+                     , a(50)
+                     , cc(a(30), a(0), a(32)) 
+                     , cc(a(40), a(0), a(42)) 
+                     , cc(a(50), a(1), a(52)) 
+                     ]); 
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 8);
+        assert_eq!(results[0].len(), 2);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(10));
+        assert_eq!(*dict.get("y").unwrap(), &a(20));
+
+        assert_eq!(results[1].len(), 2);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(10));
+        assert_eq!(*dict.get("y").unwrap(), &a(22));
+
+        assert_eq!(results[2].len(), 2);
+        let dict = results[2].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(11));
+        assert_eq!(*dict.get("y").unwrap(), &a(20));
+
+        assert_eq!(results[3].len(), 2);
+        let dict = results[3].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(11));
+        assert_eq!(*dict.get("y").unwrap(), &a(22));
+
+        assert_eq!(results[4].len(), 2);
+        let dict = results[4].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(40));
+        assert_eq!(*dict.get("y").unwrap(), &a(50));
+
+        assert_eq!(results[5].len(), 2);
+        let dict = results[5].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(40));
+        assert_eq!(*dict.get("y").unwrap(), &a(52));
+
+        assert_eq!(results[6].len(), 2);
+        let dict = results[6].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(42));
+        assert_eq!(*dict.get("y").unwrap(), &a(50));
+        
+        assert_eq!(results[7].len(), 2);
+        let dict = results[7].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(42));
+        assert_eq!(*dict.get("y").unwrap(), &a(52));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = a(1);
@@ -604,5 +666,32 @@ mod test {
         let results = find(pattern, &data).collect::<Vec<_>>();
 
         assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_capture_failing_final_path() {
+        let pattern = path(&[cons("ConsA", &[next(), next()]), cons("ConsA", &[next(), atom(1)]), capture("x")]);
+        let data = ca(ca(a(0), a(1)), ca(a(2), a(3)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+    }
+
+    #[test]
+    fn should_not_capture_failing_initial_path() {
+        let pattern = path(&[cons("ConsA", &[next(), cons("ConsA", &[wild(), atom(3)])]), cons("ConsA", &[next(), next()]), capture("x")]);
+        let data = ca(ca(a(0), a(1)), ca(a(2), a(3)));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
     }
 }
