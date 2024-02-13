@@ -489,30 +489,32 @@ mod test {
         assert_eq!(*dict.get("x").unwrap(), &a(3));
     }
 
-    // TODO  should capture path in initial path with captures
-
     #[test]
     fn should_capture_path_in_initial_path() {
-        let pattern = path(&[path(&[cons("ConsA", &[next(), next()]), wild()]), cons("ConsA", &[next(), next()]), capture("x")]);
+        let pattern = path(&[cons("ConsA", &[path(&[cons("ConsA", &[next(), next()]), capture("x")]), next()]), cons("ConsA", &[next(), next()]), capture("y")]);
         let data = ca(ca(a(0), a(1)), ca(a(2), a(3)));
         let results = find(pattern, &data).collect::<Vec<_>>();
 
         assert_eq!(results.len(), 4);
-        assert_eq!(results[0].len(), 1);
+        assert_eq!(results[0].len(), 2);
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(0));
+        assert_eq!(*dict.get("y").unwrap(), &a(2));
 
-        assert_eq!(results[1].len(), 1);
+        assert_eq!(results[1].len(), 2);
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
-        assert_eq!(*dict.get("x").unwrap(), &a(1));
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+        assert_eq!(*dict.get("y").unwrap(), &a(3));
 
-        assert_eq!(results[2].len(), 1);
+        assert_eq!(results[2].len(), 2);
         let dict = results[2].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
-        assert_eq!(*dict.get("x").unwrap(), &a(2));
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+        assert_eq!(*dict.get("y").unwrap(), &a(2));
 
-        assert_eq!(results[3].len(), 1);
+        assert_eq!(results[3].len(), 2);
         let dict = results[3].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
-        assert_eq!(*dict.get("x").unwrap(), &a(3));
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+        assert_eq!(*dict.get("y").unwrap(), &a(3));
     }
 
     #[test]
