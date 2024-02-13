@@ -137,8 +137,10 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 (Pattern::Path(mut ps), _) => {
                     let mut results = find(ps.remove(0), data);
 
-                    let result = results.next();
-                    match result {
+                    let rest_matches = self.matches.clone();
+                    let rest_work = self.work.clone();
+
+                    match results.next() {
                         // Zero matches mean that this match fails.
                                 // TODO test
                         None if self.alternatives.len() > 0 => { 
@@ -149,12 +151,12 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             return None;
                         },
                         Some(mut result) => {
-                            self.matches.append(&mut result);
+                            self.matches.append(&mut result); // TODO test
 
                             if results.nexts.len() != 0 {
                                 let next_data = results.nexts.remove(0);
 
-                                let next_pattern = Pattern::Path(ps);
+                                let next_pattern = Pattern::Path(ps.clone());
 
                                 for next in std::mem::replace(&mut results.nexts, vec![]) {
                                     let mut work = self.work.clone();
@@ -163,11 +165,29 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                                 }
 
                                 self.work.push((next_pattern, next_data));
-                                //self.alternatives.append(&mut results.alternatives); // TODO
                             }
-                        },
+                        }
                     }
 
+                    while let Some(mut result) = results.next() {
+
+                        let mut matches = rest_matches.clone();
+
+                        matches.append(&mut result); // TODO test
+
+                        if results.nexts.len() != 0 {
+                            let next_pattern = Pattern::Path(ps.clone());
+
+                            for next in std::mem::replace(&mut results.nexts, vec![]) {
+                                let mut work = rest_work.clone();
+                                work.push((next_pattern.clone(), next));
+                                self.add_alt(matches.clone(), work, vec![]);
+                            }
+                        }
+                        else {
+                            self.add_alt(matches, vec![], vec![]);
+                        }
+                    }
                 },
                 (Pattern::PathNext, _) => {
                     self.nexts.push(data);
