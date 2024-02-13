@@ -758,4 +758,6 @@ mod test {
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(1));
     }
+
+    // TODO templates in path / list_path
 }
