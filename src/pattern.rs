@@ -22,8 +22,6 @@ pub enum Pattern<TAtom : Clone> {
     PathNext,
     Path(Vec<Pattern<TAtom>>),
     TemplateVar(Box<str>), 
-    // TODO match with 
-    // TODO and/or?
 }
 
 pub fn atom<T : Clone>(t : T) -> Pattern<T> {
