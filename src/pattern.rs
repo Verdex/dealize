@@ -135,10 +135,11 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 },
                 (Pattern::Path(ps), _) if ps.len() == 0 => { /* pass */ },
                 (Pattern::Path(mut ps), _) => {
-                    let mut results = find(ps.remove(0), data);
-
                     let rest_matches = self.matches.clone();
                     let rest_work = self.work.clone();
+
+                    let mut results = find(ps.remove(0), data);
+                    results.matches.append(&mut self.matches);
 
                     match results.next() {
                         // Zero matches mean that this match fails.
@@ -169,11 +170,9 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         }
                     }
 
-                    while let Some(mut result) = results.next() {
+                    results.matches.append(&mut rest_matches.clone());
 
-                        let mut matches = rest_matches.clone();
-
-                        matches.append(&mut result); // TODO test
+                    while let Some(matches) = results.next() {
 
                         if results.nexts.len() != 0 {
                             let next_pattern = Pattern::Path(ps.clone());
@@ -187,6 +186,8 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         else {
                             self.add_alt(matches, vec![], vec![]);
                         }
+
+                        results.matches.append(&mut rest_matches.clone());
                     }
                 },
                 (Pattern::PathNext, _) => {
@@ -776,7 +777,4 @@ mod test {
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(1));
     }
-
-    // TODO templates in path / list_path
-    // TODO list_path in path (with nexts and captures)
 }
