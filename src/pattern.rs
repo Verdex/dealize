@@ -669,18 +669,20 @@ mod test {
 
     #[test]
     fn should_capture_list_path_in_path() {
-        let pattern = path(&[cons("ConsA", &[capture("x"), list_path(&[next()])]), atom(0)]);
-        let data = ca(a(99), l([a(0), a(1), a(0)]));
+        let pattern = path(&[cons("ConsA", &[capture("x"), list_path(&[next(), capture("y")])]), atom(0)]);
+        let data = ca(a(99), l([a(0), a(1), a(0), a(2)]));
         let results = find(pattern, &data).collect::<Vec<_>>();
 
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0].len(), 1);
+        assert_eq!(results[0].len(), 2);
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(99));
+        assert_eq!(*dict.get("y").unwrap(), &a(1));
 
-        assert_eq!(results[1].len(), 1);
+        assert_eq!(results[1].len(), 2);
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(99));
+        assert_eq!(*dict.get("y").unwrap(), &a(2));
     }
 
     #[test]
