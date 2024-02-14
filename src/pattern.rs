@@ -106,7 +106,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         Some(v) if v == data => { /* pass */ },
                         Some(_) => { 
                             if self.alternatives.len() > 0 {
-                                // TODO test
                                 self.switch_to_alt();
                                 continue;
                             }
@@ -141,7 +140,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 
                     match results.next() {
                         // Zero matches mean that this match fails.
-                                // TODO test
                         None if self.alternatives.len() > 0 => { 
                             self.switch_to_alt();
                             continue;
@@ -150,7 +148,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             return None;
                         },
                         Some(mut result) => {
-                            self.matches.append(&mut result); // TODO test
+                            self.matches.append(&mut result);
 
                             if results.nexts.len() != 0 {
                                 let next_data = results.nexts.remove(0);
@@ -168,6 +166,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         }
                     }
 
+                    // TODO test
                     results.matches.append(&mut rest_matches.clone());
 
                     while let Some(matches) = results.next() {
@@ -185,6 +184,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             self.add_alt(matches, vec![], vec![]);
                         }
 
+                        // TODO test
                         results.matches.append(&mut rest_matches.clone());
                     }
                 },
@@ -212,7 +212,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 },
                 _ => {
                     if self.alternatives.len() > 0 {
-                        // TODO test
                         self.switch_to_alt();
                         continue;
                     }
