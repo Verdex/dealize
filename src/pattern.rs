@@ -687,6 +687,40 @@ mod test {
     }
 
     #[test]
+    fn should_capture_list_path_with_template() {
+        let pattern = list_path(&[capture("x"), template("x")]);
+        let data = l([a(0), a(0), l([]), l([])]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &l([]));
+    }
+
+    #[test]
+    fn should_capture_path_with_template() {
+        let pattern = path(&[ cons("ConsC", &[capture("x"), next(), next()])
+                            , template("x")
+                            ]);
+        let data = cc(a(0), a(0), a(0));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = a(1);
