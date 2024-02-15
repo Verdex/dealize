@@ -136,6 +136,9 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                     let rest_work = self.work.clone();
 
                     let mut results = find(ps.remove(0), data);
+
+                    // Note:  Take the existing matches and stuff it into the iterator
+                    // so that it can be used by template variables.
                     results.matches.append(&mut self.matches);
 
                     match results.next() {
@@ -148,6 +151,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             return None;
                         },
                         Some(mut result) => {
+                            // Note:  Pull the matches out and attach them to the now empty self.matches
                             self.matches.append(&mut result);
 
                             if results.nexts.len() != 0 {
@@ -681,6 +685,22 @@ mod test {
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(99));
         assert_eq!(*dict.get("y").unwrap(), &a(2));
+    }
+
+    #[test]
+    fn should_capture_list_path_in_path_with_template() {
+        let pattern = path(&[list_path(&[capture("x"), next()]), template("x")]);
+        let data = l([a(0), a(0), cb(a(0)), cb(a(1)), cb(a(1))]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &cb(a(1)));
     }
 
     #[test]
