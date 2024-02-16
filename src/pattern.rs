@@ -80,6 +80,12 @@ impl<'a, M, A : Clone> Matches<'a, M, A> {
     }
 }
 
+// Note:  [z]
+// It looks like the matches being dumped into the Matches iterator
+// persists to all of the other alternatives.  Patching in matches into the
+// iterator after the first return does nothing because calling .next() 
+// will wipe out matches because with an empty work field .next() will 
+// clear out matches with what's in the alternatives field.
 impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
     type Item = Vec<(Box<str>, &'a M)>;
 
@@ -132,7 +138,8 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 },
                 (Pattern::Path(ps), _) if ps.len() == 0 => { /* pass */ },
                 (Pattern::Path(mut ps), _) => {
-                    let rest_matches = self.matches.clone();
+                    // Note: [z]
+                    // let rest_matches = self.matches.clone();
                     let rest_work = self.work.clone();
 
                     let mut results = find(ps.remove(0), data);
@@ -170,8 +177,8 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         }
                     }
 
-                    // TODO test
-                    results.matches.append(&mut rest_matches.clone());
+                    // Note: [z]
+                    // results.matches.append(&mut rest_matches.clone());
 
                     while let Some(matches) = results.next() {
 
@@ -188,8 +195,8 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                             self.add_alt(matches, vec![], vec![]);
                         }
 
-                        // TODO test
-                        results.matches.append(&mut rest_matches.clone());
+                        // Note: [z]
+                        // results.matches.append(&mut rest_matches.clone());
                     }
                 },
                 (Pattern::PathNext, _) => {
@@ -689,18 +696,20 @@ mod test {
 
     #[test]
     fn should_capture_list_path_in_path_with_template() {
-        let pattern = path(&[list_path(&[capture("x"), next()]), template("x")]);
-        let data = l([a(0), a(0), cb(a(0)), cb(a(1)), cb(a(1))]);
+        let pattern = cons("ConsA", &[capture("w"), path(&[list_path(&[capture("x"), next()]), template("w")])]);
+        let data = ca(a(77), l([a(0), a(77), cb(a(0)), cb(a(1)), a(77)]));
         let results = find(pattern, &data).collect::<Vec<_>>();
 
         assert_eq!(results.len(), 2);
-        assert_eq!(results[0].len(), 1);
+        assert_eq!(results[0].len(), 2);
         let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &a(0));
+        assert_eq!(*dict.get("w").unwrap(), &a(77));
 
-        assert_eq!(results[1].len(), 1);
+        assert_eq!(results[1].len(), 2);
         let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
         assert_eq!(*dict.get("x").unwrap(), &cb(a(1)));
+        assert_eq!(*dict.get("w").unwrap(), &a(77));
     }
 
     #[test]
