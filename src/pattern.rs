@@ -80,12 +80,6 @@ impl<'a, M, A : Clone> Matches<'a, M, A> {
     }
 }
 
-// Note:  [z]
-// It looks like the matches being dumped into the Matches iterator
-// persists to all of the other alternatives.  Patching in matches into the
-// iterator after the first return does nothing because calling .next() 
-// will wipe out matches because with an empty work field .next() will 
-// clear out matches with what's in the alternatives field.
 impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
     type Item = Vec<(Box<str>, &'a M)>;
 
@@ -138,8 +132,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                 },
                 (Pattern::Path(ps), _) if ps.len() == 0 => { /* pass */ },
                 (Pattern::Path(mut ps), _) => {
-                    // Note: [z]
-                    // let rest_matches = self.matches.clone();
                     let rest_work = self.work.clone();
 
                     let mut results = find(ps.remove(0), data);
@@ -177,9 +169,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         }
                     }
 
-                    // Note: [z]
-                    // results.matches.append(&mut rest_matches.clone());
-
                     while let Some(matches) = results.next() {
 
                         if results.nexts.len() != 0 {
@@ -194,9 +183,6 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
                         else {
                             self.add_alt(matches, vec![], vec![]);
                         }
-
-                        // Note: [z]
-                        // results.matches.append(&mut rest_matches.clone());
                     }
                 },
                 (Pattern::PathNext, _) => {
