@@ -138,6 +138,9 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
 
                     // Note:  Take the existing matches and stuff it into the iterator
                     // so that it can be used by template variables.
+                    // This only needs to happen before the first .next() because
+                    // subsequent .next()'s self.switch_to_alt() method will 
+                    // populate the matches field.
                     results.matches.append(&mut self.matches);
 
                     match results.next() {
