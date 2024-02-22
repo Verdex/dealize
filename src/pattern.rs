@@ -11,64 +11,80 @@ pub trait Matchable : PartialEq {
     fn kind<'a>(&'a self) -> MatchKind<'a, Self> where Self : Sized;
 }
 
-#[derive(Debug, Clone)]
-pub enum Pattern<TAtom : Clone> {
-    Atom(TAtom),
+#[derive(Debug)]
+pub enum Pattern<T : Matchable> {
+    Atom(T::Atom),
     Wild,
     CaptureVar(Box<str>),
-    Cons(Box<str>, Vec<Pattern<TAtom>>),
-    ExactList(Vec<Pattern<TAtom>>),
-    ListPath(Vec<Pattern<TAtom>>),
+    Cons(Box<str>, Vec<Pattern<T>>),
+    ExactList(Vec<Pattern<T>>),
+    ListPath(Vec<Pattern<T>>),
     PathNext,
-    Path(Vec<Pattern<TAtom>>),
+    Path(Vec<Pattern<T>>),
     TemplateVar(Box<str>), 
 }
 
-pub fn atom<T : Clone>(t : T) -> Pattern<T> {
+impl<T : Matchable> Clone for Pattern<T> { 
+    fn clone(&self) -> Self {
+        match self {
+            Pattern::Atom(x) => Pattern::Atom(x.clone()),
+            Pattern::Wild => Pattern::Wild,
+            Pattern::CaptureVar(x) => Pattern::CaptureVar(x.clone()),
+            Pattern::Cons(n, xs) => Pattern::Cons(n.clone(), xs.clone()),
+            Pattern::ExactList(xs) => Pattern::ExactList(xs.clone()),
+            Pattern::ListPath(xs) => Pattern::ListPath(xs.clone()),
+            Pattern::PathNext => Pattern::PathNext,
+            Pattern::Path(xs) => Pattern::Path(xs.clone()),
+            Pattern::TemplateVar(x) => Pattern::TemplateVar(x.clone()),
+        }
+    }
+}
+
+pub fn atom<T : Matchable>(t : T::Atom) -> Pattern<T> {
     Pattern::Atom(t)
 }
 
-pub fn wild<T : Clone>() -> Pattern<T> {
+pub fn wild<T : Matchable>() -> Pattern<T> {
     Pattern::Wild
 }
 
-pub fn capture<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
+pub fn capture<T : Matchable, S : AsRef<str>>(name : S) -> Pattern<T> {
     Pattern::CaptureVar(name.as_ref().into())
 }
 
-pub fn exact_list<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+pub fn exact_list<T : Matchable>(patterns : &[Pattern<T>]) -> Pattern<T> {
     Pattern::ExactList(patterns.to_vec())
 }
 
-pub fn cons<T : Clone, S : AsRef<str>>(name : S, params : &[Pattern<T>]) -> Pattern<T> {
+pub fn cons<T : Matchable, S : AsRef<str>>(name : S, params : &[Pattern<T>]) -> Pattern<T> {
     Pattern::Cons(name.as_ref().into(), params.to_vec())
 }
 
-pub fn template<T : Clone, S : AsRef<str>>(name : S) -> Pattern<T> {
+pub fn template<T : Matchable, S : AsRef<str>>(name : S) -> Pattern<T> {
     Pattern::TemplateVar(name.as_ref().into())
 }
 
-pub fn list_path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+pub fn list_path<T : Matchable>(patterns : &[Pattern<T>]) -> Pattern<T> {
     Pattern::ListPath(patterns.to_vec())
 }
 
-pub fn path<T : Clone>(patterns : &[Pattern<T>]) -> Pattern<T> {
+pub fn path<T : Matchable>(patterns : &[Pattern<T>]) -> Pattern<T> {
     Pattern::Path(patterns.to_vec())
 }
 
-pub fn next<T : Clone>() -> Pattern<T> {
+pub fn next<T : Matchable>() -> Pattern<T> {
     Pattern::PathNext
 }
 
-pub struct Matches<'a, M, A : Clone> {
+pub struct Matches<'a, M : Matchable> {
     matches : Vec<(Box<str>, &'a M)>,
-    work : Vec<(Pattern<A>, &'a M)>,
+    work : Vec<(Pattern<M>, &'a M)>,
     nexts : Vec<&'a M>,
-    alternatives: Vec<(Vec<(Box<str>, &'a M)>, Vec<(Pattern<A>, &'a M)>, Vec<&'a M>)>,
+    alternatives: Vec<(Vec<(Box<str>, &'a M)>, Vec<(Pattern<M>, &'a M)>, Vec<&'a M>)>,
 }
 
-impl<'a, M, A : Clone> Matches<'a, M, A> {
-    fn add_alt(&mut self, matches : Vec<(Box<str>, &'a M)>, work : Vec<(Pattern<A>, &'a M)>, nexts : Vec<&'a M>) {
+impl<'a, M : Matchable> Matches<'a, M> {
+    fn add_alt(&mut self, matches : Vec<(Box<str>, &'a M)>, work : Vec<(Pattern<M>, &'a M)>, nexts : Vec<&'a M>) {
         self.alternatives.push((matches, work, nexts));
     }
 
@@ -80,7 +96,7 @@ impl<'a, M, A : Clone> Matches<'a, M, A> {
     }
 }
 
-impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
+impl<'a, M : Matchable> Iterator for Matches<'a, M> {
     type Item = Vec<(Box<str>, &'a M)>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -225,7 +241,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M, M::Atom> {
     }
 }
 
-pub fn find<'a, M : Matchable>(pattern : Pattern<M::Atom>, data : &'a M) -> Matches<'a, M, M::Atom> {
+pub fn find<'a, M : Matchable>(pattern : Pattern<M>, data : &'a M) -> Matches<'a, M> {
     Matches { matches : vec![]
             , work : vec![(pattern, data)]
             , alternatives: vec![] 
