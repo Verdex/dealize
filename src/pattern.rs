@@ -11,7 +11,6 @@ pub trait Matchable : PartialEq {
     fn kind<'a>(&'a self) -> MatchKind<'a, Self> where Self : Sized;
 }
 
-#[derive(Debug)]
 pub enum Pattern<T : Matchable> {
     Atom(T::Atom),
     Wild,
@@ -22,6 +21,16 @@ pub enum Pattern<T : Matchable> {
     PathNext,
     Path(Vec<Pattern<T>>),
     TemplateVar(Box<str>), 
+    // MatchWith(),
+    // Pattern thingy
+    // and
+    // or 
+}
+
+impl<T : Matchable> std::fmt::Debug for Pattern<T> {
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
+        todo!()
+    }
 }
 
 impl<T : Matchable> Clone for Pattern<T> { 
@@ -36,6 +45,8 @@ impl<T : Matchable> Clone for Pattern<T> {
             Pattern::PathNext => Pattern::PathNext,
             Pattern::Path(xs) => Pattern::Path(xs.clone()),
             Pattern::TemplateVar(x) => Pattern::TemplateVar(x.clone()),
+            //Pattern::MatchWith(f) => Pattern::MatchWith(f.clone()),
+            _ => todo!(),
         }
     }
 }
