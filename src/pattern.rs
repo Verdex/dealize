@@ -1,4 +1,6 @@
 
+use std::rc::Rc;
+
 pub enum MatchKind<'a, TSelf : Matchable> {
     Atom(&'a TSelf::Atom),
     Cons(&'a str, Vec<&'a TSelf>),
@@ -21,15 +23,26 @@ pub enum Pattern<T : Matchable> {
     PathNext,
     Path(Vec<Pattern<T>>),
     TemplateVar(Box<str>), 
-    // MatchWith(),
+    MatchWith(Rc<dyn Fn(&T) -> bool>),
     // Pattern thingy
     // and
     // or 
 }
 
-impl<T : Matchable> std::fmt::Debug for Pattern<T> {
+impl<T : Matchable<Atom = impl std::fmt::Debug>> std::fmt::Debug for Pattern<T> {
     fn fmt(&self, f : &mut std::fmt::Formatter) -> Result<(), std::fmt::Error> {
-        todo!()
+        match self {
+            Pattern::Atom(x) => write!(f, "Pattern::Atom({:?})", x),
+            Pattern::Wild => write!(f, "Pattern::Wild"),
+            Pattern::CaptureVar(x) => write!(f, "Pattern::CaptureVar({:?})", x),
+            Pattern::Cons(n, xs) => write!(f, "Pattern::Cons({}, {:?})", n, xs),
+            Pattern::ExactList(xs) => write!(f, "Pattern::ExactList({:?})", xs),
+            Pattern::ListPath(xs) => write!(f, "Pattern::ListPath({:?})", xs),
+            Pattern::PathNext => write!(f, "Pattern::PathNext"),
+            Pattern::Path(xs) => write!(f, "Pattern::Path({:?})", xs),
+            Pattern::TemplateVar(x) => write!(f, "Pattern::TemplateVar({:?})", x),
+            Pattern::MatchWith(_) => write!(f, "Pattern::MatchWith"),
+        }
     }
 }
 
@@ -45,8 +58,7 @@ impl<T : Matchable> Clone for Pattern<T> {
             Pattern::PathNext => Pattern::PathNext,
             Pattern::Path(xs) => Pattern::Path(xs.clone()),
             Pattern::TemplateVar(x) => Pattern::TemplateVar(x.clone()),
-            //Pattern::MatchWith(f) => Pattern::MatchWith(f.clone()),
-            _ => todo!(),
+            Pattern::MatchWith(f) => Pattern::MatchWith(Rc::clone(&f)),
         }
     }
 }
