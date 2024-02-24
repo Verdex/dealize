@@ -266,6 +266,16 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M> {
                     }
                 },
                 (Pattern::MatchWith(f), _) if f(data) => { /* pass */ },
+                (Pattern::And(a, b), _) => {
+                    self.work.push((*a, data));
+                    self.work.push((*b, data));
+                },
+                (Pattern::Or(a, b), _) => {
+                    let mut work = self.work.clone();
+                    work.push((*b, data));
+                    self.work.push((*a, data));
+                    self.add_alt(self.matches.clone(), work, vec![]);
+                },
                 _ => {
                     if self.alternatives.len() > 0 {
                         self.switch_to_alt();
