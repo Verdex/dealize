@@ -842,6 +842,19 @@ mod test {
     }
 
     #[test]
+    fn should_capture_both_and() {
+        let pattern = and(capture("x"), capture("y"));
+        let data = a(0);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 2);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+        assert_eq!(*dict.get("y").unwrap(), &a(0));
+    }
+
+    #[test]
     fn should_find_with_match_with() {
         let pattern = list_path(&[match_with(|x| match x { Data::A(x) => x % 2 == 0, _ => false }), capture("x")]);
         let data = l([cb(a(0)), a(2), a(3), a(4), cb(a(0))]);
