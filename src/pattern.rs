@@ -802,6 +802,46 @@ mod test {
     }
 
     #[test]
+    fn should_capture_from_first_or() {
+        let pattern = or(cons("ConsA", &[capture("x"), atom(0)]), atom(9));
+        let data = ca(a(1), a(0));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+    }
+    
+    #[test]
+    fn should_capture_from_second_or() {
+        let pattern = or(atom(9), cons("ConsA", &[capture("x"), atom(0)]));
+        let data = ca(a(1), a(0));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+    }
+
+    #[test]
+    fn should_capture_from_both_or() {
+        let pattern = or(cons("ConsA", &[atom(1), capture("x")]), cons("ConsA", &[capture("x"), atom(0)]));
+        let data = ca(a(1), a(0));
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(0));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(1));
+    }
+
+    #[test]
     fn should_find_with_match_with() {
         let pattern = list_path(&[match_with(|x| match x { Data::A(x) => x % 2 == 0, _ => false }), capture("x")]);
         let data = l([cb(a(0)), a(2), a(3), a(4), cb(a(0))]);
