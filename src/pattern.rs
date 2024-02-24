@@ -25,8 +25,8 @@ pub enum Pattern<T : Matchable> {
     TemplateVar(Box<str>), 
     MatchWith(Rc<dyn Fn(&T) -> bool>),
     // Pattern thingy
-    // and
-    // or 
+    And(Box<Pattern<T>>, Box<Pattern<T>>),
+    Or(Box<Pattern<T>>, Box<Pattern<T>>),
 }
 
 impl<T : Matchable<Atom = impl std::fmt::Debug>> std::fmt::Debug for Pattern<T> {
@@ -42,6 +42,8 @@ impl<T : Matchable<Atom = impl std::fmt::Debug>> std::fmt::Debug for Pattern<T> 
             Pattern::Path(xs) => write!(f, "Pattern::Path({:?})", xs),
             Pattern::TemplateVar(x) => write!(f, "Pattern::TemplateVar({:?})", x),
             Pattern::MatchWith(_) => write!(f, "Pattern::MatchWith"),
+            Pattern::And(a, b) => write!(f, "Pattern::And({:?}, {:?})", a, b),
+            Pattern::Or(a, b) => write!(f, "Pattern::Or({:?}, {:?})", a, b),
         }
     }
 }
@@ -59,6 +61,8 @@ impl<T : Matchable> Clone for Pattern<T> {
             Pattern::Path(xs) => Pattern::Path(xs.clone()),
             Pattern::TemplateVar(x) => Pattern::TemplateVar(x.clone()),
             Pattern::MatchWith(f) => Pattern::MatchWith(Rc::clone(&f)),
+            Pattern::And(a, b) => Pattern::And(a.clone(), b.clone()),
+            Pattern::Or(a, b) => Pattern::Or(a.clone(), b.clone()),
         }
     }
 }
@@ -101,6 +105,14 @@ pub fn next<T : Matchable>() -> Pattern<T> {
 
 pub fn match_with<T : Matchable>(f : impl Fn(&T) -> bool + 'static) -> Pattern<T> {
     Pattern::MatchWith(Rc::new(f))
+}
+
+pub fn and<T : Matchable>(a : Pattern<T>, b : Pattern<T>) -> Pattern<T> {
+    Pattern::And(Box::new(a), Box::new(b))
+}
+
+pub fn or<T : Matchable>(a : Pattern<T>, b : Pattern<T>) -> Pattern<T> {
+    Pattern::Or(Box::new(a), Box::new(b))
 }
 
 pub struct Matches<'a, M : Matchable> {
