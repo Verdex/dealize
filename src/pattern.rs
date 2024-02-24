@@ -818,6 +818,60 @@ mod test {
     }
 
     #[test]
+    fn should_find_with_first_or() {
+        let pattern = or(atom(0), atom(1));
+        let data = a(0);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn should_find_with_second_or() {
+        let pattern = or(atom(0), atom(1));
+        let data = a(1);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn should_not_find_with_or() {
+        let pattern = or(atom(0), atom(1));
+        let data = a(2);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_find_with_and() {
+        let pattern = and(wild(), atom(0));
+        let data = a(0);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 1);
+    }
+
+    #[test]
+    fn should_not_find_with_and_when_first_fails() {
+        let pattern = and(atom(1), atom(0));
+        let data = a(0);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
+    fn should_not_find_with_and_when_second_fails() {
+        let pattern = and(atom(1), atom(0));
+        let data = a(1);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 0);
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = a(1);
