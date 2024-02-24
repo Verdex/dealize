@@ -780,6 +780,22 @@ mod test {
     }
 
     #[test]
+    fn should_find_with_match_with() {
+        let pattern = list_path(&[match_with(|x| match x { Data::A(x) => x % 2 == 0, _ => false }), capture("x")]);
+        let data = l([cb(a(0)), a(2), a(3), a(4), cb(a(0))]);
+        let results = find(pattern, &data).collect::<Vec<_>>();
+
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].len(), 1);
+        let dict = results[0].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &a(3));
+
+        assert_eq!(results[1].len(), 1);
+        let dict = results[1].clone().into_iter().collect::<HashMap<Box<str>, &Data>>();
+        assert_eq!(*dict.get("x").unwrap(), &cb(a(0)));
+    }
+
+    #[test]
     fn should_not_find_on_non_matching_atom() {
         let pattern = atom(8);
         let data = a(1);
