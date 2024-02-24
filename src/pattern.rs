@@ -24,7 +24,6 @@ pub enum Pattern<T : Matchable> {
     Path(Vec<Pattern<T>>),
     TemplateVar(Box<str>), 
     MatchWith(Rc<dyn Fn(&T) -> bool>),
-    // Pattern thingy
     And(Box<Pattern<T>>, Box<Pattern<T>>),
     Or(Box<Pattern<T>>, Box<Pattern<T>>),
 }
