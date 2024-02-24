@@ -99,6 +99,10 @@ pub fn next<T : Matchable>() -> Pattern<T> {
     Pattern::PathNext
 }
 
+pub fn match_with<T : Matchable>(f : impl Fn(&T) -> bool + 'static) -> Pattern<T> {
+    Pattern::MatchWith(Rc::new(f))
+}
+
 pub struct Matches<'a, M : Matchable> {
     matches : Vec<(Box<str>, &'a M)>,
     work : Vec<(Pattern<M>, &'a M)>,
@@ -249,6 +253,7 @@ impl<'a, M : Matchable> Iterator for Matches<'a, M> {
                         self.work.push(w);
                     }
                 },
+                (Pattern::MatchWith(f), _) if f(data) => { /* pass */ },
                 _ => {
                     if self.alternatives.len() > 0 {
                         self.switch_to_alt();
