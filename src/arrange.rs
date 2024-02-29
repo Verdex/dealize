@@ -2,51 +2,19 @@
 #[derive(Debug)]
 pub struct Bracket<T> {
     name : Box<str>,
-    contents : Vec<T>, 
-}
-
-pub enum Matcher<'a, T> {
-    Pointer(fn(&T) -> bool),
-    Ref(&'a mut dyn FnMut(&T) -> bool),
-    Boxed(Box<dyn FnMut(&T) -> bool>),
-}
-
-impl<'a, T> Matcher<'a, T> {
-    pub fn call(&mut self, input : &T) -> bool {
-        match self {
-            Matcher::Pointer(f) => f(input),
-            Matcher::Boxed(f) => f(input),
-            Matcher::Ref(f) => f(input),
-        }
-    }
-}
-
-pub enum Transformer<'a, T, S> {
-    Pointer(fn(&T) -> S),
-    Ref(&'a mut dyn FnMut(&T) -> S),
-    Boxed(Box<dyn FnMut(&T) -> S>),
-}
-
-impl<'a, T, S> Transformer<'a, T, S> {
-    pub fn call(&mut self, input : &T) -> S {
-        match self {
-            Transformer::Pointer(f) => f(input),
-            Transformer::Boxed(f) => f(input),
-            Transformer::Ref(f) => f(input),
-        }
-    }
+    content : Vec<T>, 
 }
 
 pub struct BracketRule<'a, T> { 
     pub name : Box<str>,
-    pub start : Matcher<'a, T>,
-    pub end : Matcher<'a, T>,
+    pub start : &'a mut dyn FnMut(&T) -> bool,
+    pub end : &'a mut dyn FnMut(&T) -> bool,
 }
 
 pub struct TransformRule<'a, T, S> {
     pub name : Box<str>,
-    pub pattern : Vec<Matcher<'a, Bracket<T>>>,
-    pub transform : Transformer<'a, Bracket<T>, S>,
+    pub pattern : Vec<&'a mut dyn FnMut(&Bracket<T>) -> bool>,
+    pub transform : &'a mut dyn FnMut(&[Bracket<T>]) -> S,
 }
 
 /*
