@@ -19,7 +19,7 @@ pub struct Bracket<T> {
 pub struct BracketRule<'a, T> { 
     pub name : Box<str>,
     pub start : &'a dyn Fn(&T) -> bool,
-    pub end : &'a dyn Fn(&T) -> bool,
+    pub take_while : &'a dyn Fn(&T) -> bool,
 }
 
 pub struct TransformRule<'a, T, S> {
@@ -64,7 +64,7 @@ fn bracket<T, I : Iterator<Item = T>>(input : &mut Peekable<I>, rules : &[Bracke
 fn sub_bracket<T, I : Iterator<Item = T>>(initial : T, input : &mut Peekable<I>, rule : &BracketRule<T>, rules : &[BracketRule<T>]) -> Result<Bracket<T>, ()> {
     let mut content = vec![BracketItem::Item(initial)];
 
-    while let Some(v) = input.next_if(|x| !(rule.end)(x)) {
+    while let Some(v) = input.next_if(rule.take_while) {
         match rules.iter().find(|r| (r.start)(&v)) {
             Some(r) => { content.push(BracketItem::Bracket(sub_bracket(v, input, r, rules)?)); },
             None => { content.push(BracketItem::Item(v)); },
