@@ -1,11 +1,19 @@
 
+use std::iter::Peekable;
+
 // TODO replace dyn error with actual error type
 // Note:  Might not be able to use a real error type without enforcing a Display for T
 
 #[derive(Debug)]
+pub enum BracketItem<T> {
+    Bracket(Bracket<T>),
+    Item(T),
+}
+
+#[derive(Debug)]
 pub struct Bracket<T> {
     name : Box<str>,
-    content : Vec<T>, 
+    content : Vec<BracketItem<T>>, 
 }
 
 pub struct BracketRule<'a, T> { 
@@ -34,29 +42,36 @@ pub fn parse<'a, T, S>( input : &mut impl Iterator<Item = T>
                   , rules : &[TransformRule<'a, T, S>]
                   ) -> Result<Vec<S>, ()>{ 
 
+    let input = input.peekable();
+
     todo!()
 }
 
-fn bracket<T>(input : &mut impl Iterator<Item = T>, rules : &[BracketRule<T>]) -> Option<Result<Bracket<T>, ()>> {
+fn bracket<T, I : Iterator<Item = T>>(input : &mut Peekable<I>, rules : &[BracketRule<T>]) -> Option<Result<Bracket<T>, ()>> {
     match input.next() {
         None => None,
         Some(v) => {
             for rule in rules {
                 if (rule.start)(&v) {
-                    return Some(sub_bracket(input, rule));
+                    return Some(sub_bracket(v, input, rule, rules));
                 }
             }
-            Some(Err(()))
-            // TODO : Error no start rules found for v
+            Some(Err(())) // TODO : Error no start rules found for v
         },
     }
 }
 
-fn sub_bracket<T>(input : &mut impl Iterator<Item = T>, rule : &BracketRule<T>) -> Result<Bracket<T>, ()> {
-    // TODO iterator becomes a problem here b/c the end test will need to somehow put the item back on the iterator
-    // [And iirc peekable pulls it off and then holds it in a struct, so we'll need something better]
-    // note:  Maybe just return Result<(Option<T>, Bracket<T>), ()> and then also have an initial : Option<T> everywhere-ish
-Err(())
+fn sub_bracket<T, I : Iterator<Item = T>>(initial : T, input : &mut Peekable<I>, rule : &BracketRule<T>, rules : &[BracketRule<T>]) -> Result<Bracket<T>, ()> {
+    let mut content = vec![BracketItem::Item(initial)];
+
+    while let Some(v) = input.next_if(|x| !(rule.end)(x)) {
+        match rules.iter().find(|r| (r.start)(&v)) {
+            Some(r) => { content.push(BracketItem::Bracket(sub_bracket(v, input, r, rules)?)); },
+            None => { content.push(BracketItem::Item(v)); },
+        }
+    }
+
+    Ok(Bracket { name: rule.name.clone(), content })
 }
 
 /*
