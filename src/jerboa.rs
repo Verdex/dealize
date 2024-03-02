@@ -51,7 +51,7 @@ pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaE
     todo!()
 }
 
-fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> (S, &'a [T]) {
+fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a [T]), JerboaError> {
     let mut captures = vec![];
     for m in &rule.matches {
         match (input, m) {
@@ -120,10 +120,13 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> (S, &'a [T]) {
             },
 
             // Error
-            _ => {
-
+            ([], _) => {
+                return Err(JerboaError::UnexpectedEndOfInput(rule.name.clone()));
+            },
+            (_, _) => { 
+                return Err(JerboaError::RuleFailedToMatch(rule.name.clone()));
             },
         }
     }
-    ((rule.transform)(captures), input)
+    Ok(((rule.transform)(captures), input))
 }
