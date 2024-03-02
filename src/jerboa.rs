@@ -143,3 +143,9 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
     }
     Ok(((rule.transform)(captures), input))
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+}
