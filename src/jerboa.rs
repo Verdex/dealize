@@ -5,6 +5,7 @@ use std::rc::Rc;
 pub enum JerboaError {
     UnexpectedEndOfInput(Box<str>),
     RuleFailedToMatch(Box<str>),
+    Multi(Vec<JerboaError>),
 }
 
 impl std::fmt::Display for JerboaError {
@@ -12,12 +13,12 @@ impl std::fmt::Display for JerboaError {
         match self {
             JerboaError::UnexpectedEndOfInput(n) => write!(f, "Unexpected end of input in rule: {}", n),
             JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
+            JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
         }
     }
 }
 
 impl std::error::Error for JerboaError { }
-
 
 pub enum Capture<'a, T> {
     Item(&'a T),
