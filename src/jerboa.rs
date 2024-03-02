@@ -39,11 +39,12 @@ pub enum Match<T> {
 }
 
 pub struct Rule<T, S> { // TODO should fields be public or should there be some sort of constructor?
+    name : Box<str>,
     matches: Vec<Match<T>>,
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> S>,
 }
 
-pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Box<dyn std::error::Error>> { // TODO error typet 
+pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
     for rule in rules {
         try_rule(input, rule);
     }
