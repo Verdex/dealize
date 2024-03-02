@@ -27,7 +27,7 @@ pub struct Rule<T, S> { // TODO should fields be public or should there be some 
 
 pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Box<dyn std::error::Error>> { // TODO error typet 
     for rule in rules {
-
+        try_rule(input, rule);
     }
     todo!()
 }
@@ -51,14 +51,14 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> (S, &'a [T]) {
                 captures.push(Capture::Option(Some(x)));      
                 input = r;
             },
-            (_, Match::Free(f, MatchOpt::Option)) => {
+            (_, Match::Free(_, MatchOpt::Option)) => {
                 captures.push(Capture::Option(None));      
             },
             ([x, r @ ..], Match::Context(f, MatchOpt::Option)) if f(x, &captures) => {
                 captures.push(Capture::Option(Some(x)));      
                 input = r;
             },
-            (_, Match::Context(f, MatchOpt::Option)) => {
+            (_, Match::Context(_, MatchOpt::Option)) => {
                 captures.push(Capture::Option(None));      
             },
 
@@ -78,7 +78,7 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> (S, &'a [T]) {
                 }
                 captures.push(Capture::List(local));
             },
-            (_, Match::Free(f, MatchOpt::List)) => {
+            (_, Match::Free(_, MatchOpt::List)) => {
                 captures.push(Capture::List(vec![]));
             },
             ([x, r @ ..], Match::Context(f, MatchOpt::List)) => {
@@ -96,7 +96,7 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> (S, &'a [T]) {
                 }
                 captures.push(Capture::List(local));
             },
-            (_, Match::Context(f, MatchOpt::List)) => {
+            (_, Match::Context(_, MatchOpt::List)) => {
                 captures.push(Capture::List(vec![]));
             },
 
