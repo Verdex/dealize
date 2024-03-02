@@ -1,4 +1,4 @@
 
 pub mod seq;
 pub mod pattern;
-pub mod collator;
+pub mod jerboa;
