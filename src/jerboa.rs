@@ -1,6 +1,24 @@
 
 use std::rc::Rc;
 
+#[derive(Debug)]
+pub enum JerboaError {
+    UnexpectedEndOfInput,
+    RuleFailedToMatch(Box<str>),
+}
+
+impl std::fmt::Display for JerboaError {
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            JerboaError::UnexpectedEndOfInput => write!(f, "Unexpected end of input"),
+            JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
+        }
+    }
+}
+
+impl std::error::Error for JerboaError { }
+
+
 pub enum Capture<'a, T> {
     Item(&'a T),
     Option(Option<&'a T>),
