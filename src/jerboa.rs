@@ -45,11 +45,23 @@ pub struct Rule<T, S> { // TODO should fields be public or should there be some 
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> S>,
 }
 
-pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
-    for rule in rules {
-        try_rule(input, rule);
-    }
-    todo!()
+pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
+    let mut results = vec![];
+    'outer : while !input.is_empty() {
+        let mut errors = vec![];
+        for rule in rules {
+            match try_rule(input, rule) {
+                Ok((result, new_input)) => {
+                    results.push(result);
+                    input = new_input;
+                    continue 'outer;
+                },
+                Err(e) => { errors.push(e); },
+            }
+        }
+        return Err(JerboaError::Multi(errors));
+    } 
+    Ok(results)
 }
 
 fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a [T]), JerboaError> {
