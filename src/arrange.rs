@@ -16,10 +16,8 @@ pub struct Bracket<T> {
     content : Vec<BracketItem<T>>, 
 }
 
-pub struct BracketRule<'a, T> { 
-    pub name : Box<str>,
-    pub start : &'a dyn Fn(&T) -> bool,
-    pub take_while : &'a dyn Fn(&T) -> bool,
+pub struct GroupRule<'a, T> { 
+    Bracket { name : Box<str>, start : &'a dyn Fn(&T) -> bool, end : &'a dyn Fn(&T) -> bool },
 }
 
 pub struct TransformRule<'a, T, S> {
@@ -38,7 +36,7 @@ impl From<a> for b {
 */
 
 pub fn parse<'a, T, S>( input : &mut impl Iterator<Item = T>
-                  , brackets : &[BracketRule<T>]
+                  , brackets : &[GroupRule<T>]
                   , rules : &[TransformRule<'a, T, S>]
                   ) -> Result<Vec<S>, ()>{ 
 
@@ -47,13 +45,13 @@ pub fn parse<'a, T, S>( input : &mut impl Iterator<Item = T>
     todo!()
 }
 
-fn bracket<T, I : Iterator<Item = T>>(input : &mut Peekable<I>, rules : &[BracketRule<T>]) -> Option<Result<Bracket<T>, ()>> {
+fn group<T, I : Iterator<Item = T>>(input : &mut Peekable<I>, rules : &[GroupRule<T>]) -> Option<Result<Bracket<T>, ()>> {
     match input.next() {
         None => None,
         Some(v) => {
             for rule in rules {
-                if (rule.start)(&v) {
-                    return Some(sub_bracket(v, input, rule, rules));
+                match rule {
+                    rule @ GroupRule::Bracket { start, .. } if start(&v) => { return Some(bracket(v, input, rule, rules)); },
                 }
             }
             Some(Err(())) // TODO : Error no start rules found for v
@@ -61,12 +59,14 @@ fn bracket<T, I : Iterator<Item = T>>(input : &mut Peekable<I>, rules : &[Bracke
     }
 }
 
-fn sub_bracket<T, I : Iterator<Item = T>>(initial : T, input : &mut Peekable<I>, rule : &BracketRule<T>, rules : &[BracketRule<T>]) -> Result<Bracket<T>, ()> {
+fn bracket<T, I : Iterator<Item = T>>(initial : T, input : &mut Peekable<I>, rule : &GroupRule<T>, rules : &[GroupRule<T>]) -> Result<Bracket<T>, ()> {
     let mut content = vec![BracketItem::Item(initial)];
 
     while let Some(v) = input.next_if(rule.take_while) {
         match rules.iter().find(|r| (r.start)(&v)) {
-            Some(r) => { content.push(BracketItem::Bracket(sub_bracket(v, input, r, rules)?)); },
+            Some(GroupRule::Bracket { start, .. }) => { 
+                content.push(BracketItem::Bracket(sub_bracket(v, input, r, rules)?)); 
+            },
             None => { content.push(BracketItem::Item(v)); },
         }
     }
