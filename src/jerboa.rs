@@ -64,6 +64,7 @@ impl<T> Match<T> {
     }
 }
 
+#[derive(Clone)]
 pub struct Rule<T, S> { 
     name : Box<str>,
     matches: Vec<Match<T>>,
@@ -489,6 +490,30 @@ mod test {
     }
 
     #[test]
+    fn should_parse_match_context() {
+        let digit = Match::free(|c : &char| c.is_digit(10) );
+        let added = Match::context(|c : &char, captures| {
+            if let Ok(d) = c.to_string().parse::<u8>() {
+                let v = captures.iter().map(|c| match c {
+                    Capture::Item(v) => v.to_string().parse::<u8>().unwrap(),
+                    _ => unreachable!(),
+                }).reduce(|a, b| a + b).unwrap();
+                v == d 
+            }
+            else {
+                false
+            }
+        });
+        let r1 = Rule::fixed("add", [digit.clone(), digit.clone(), added.clone()], |_| Ok(1));
+        let r2 = Rule::fixed("add", [digit.clone(), digit.clone(), digit, added], |_| Ok(2));
+
+        let input = "1247123".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output, [2, 1]);
+    }
+
+    #[test]
     fn should_indicate_error_from_transformer() {
         let m = Match::free(|_ : &char| true);
         let r = Rule::fixed("error", [m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
@@ -545,9 +570,19 @@ mod test {
         }
     }
 
-    // put parser into a transfomer
+    #[test]
+    fn should_transform_captures() {
+        let m = Match::free(|_ : &char| true);
+        let r = Rule::fixed("x", [m.clone(), m], move |captures| {
+            Ok(captures.iter().map(|c| match c { 
+                Capture::Item(x) => **x,
+                _ => unreachable!(),
+            }).collect::<String>())
+        });
 
-    // everything again with context 
+        let input = "abcd".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r]).unwrap();
 
-
+        assert_eq!(output, ["ab", "cd"]);
+    }
 }
