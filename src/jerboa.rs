@@ -6,6 +6,7 @@ pub enum JerboaError {
     UnexpectedEndOfInput(Box<str>),
     RuleFailedToMatch(Box<str>),
     Multi(Vec<JerboaError>),
+    Other(Box<dyn std::error::Error>),
 }
 
 impl std::fmt::Display for JerboaError {
@@ -14,6 +15,7 @@ impl std::fmt::Display for JerboaError {
             JerboaError::UnexpectedEndOfInput(n) => write!(f, "Unexpected end of input in rule: {}", n),
             JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
             JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
+            JerboaError::Other(e) => write!(f, "Other Error Encountered {:?}", e),
         }
     }
 }
