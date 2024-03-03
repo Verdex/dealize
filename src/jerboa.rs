@@ -363,6 +363,131 @@ mod test {
         assert_eq!(output, [1]);
     }
 
+    //***********************************
+
+    #[test]
+    fn should_parse_empty_input_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
+        let output = parse(&[], &[a_rule]).unwrap();
+
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn should_parse_single_match_rule_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
+        let input = "aaaa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1, 1, 1, 1]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_b = Match::context(|c : &char, _| *c == 'b');
+        let match_c = Match::context(|c : &char, _| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "acccb".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_at_end_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_c = Match::context(|c : &char, _| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "accc".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_with_empty_list_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_b = Match::context(|c : &char, _| *c == 'b');
+        let match_c = Match::context(|c : &char, _| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "ab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_at_end_with_empty_list_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_c = Match::context(|c : &char, _| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+    
+    #[test]
+    fn should_parse_option_rule_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_b = Match::context(|c : &char, _| *c == 'b');
+        let match_c = Match::context(|c : &char, _| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "acb".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_at_end_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_c = Match::context(|c : &char, _| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "ac".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_with_nothing_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_b = Match::context(|c : &char, _| *c == 'b');
+        let match_c = Match::context(|c : &char, _| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "ab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_at_end_with_nothing_with_context() {
+        let match_a = Match::context(|c : &char, _| *c == 'a');
+        let match_c = Match::context(|c : &char, _| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
     #[test]
     fn should_indicate_error_from_transformer() {
         let m = Match::free(|_ : &char| true);
@@ -371,11 +496,55 @@ mod test {
         let input = "a".chars().collect::<Vec<_>>();
         let output = parse(&input, &[r]);
 
-        assert!(output.is_err());
+        assert!(matches!(output, Err(JerboaError::Multi(_))));
     }
 
-    // error from no rules matching
-    // error from all input being consumed
+    #[test]
+    fn should_indicate_error_from_no_rules_matching() {
+        let m = Match::free(|_ : &char| false);
+        let r = Rule::fixed("e1", [m.clone()], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+        let r2 = Rule::fixed("e2", [m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r, r2]);
+
+        match output {
+            Err(JerboaError::Multi(es)) => {
+                match &es[..] {
+                    [JerboaError::RuleFailedToMatch(n1), JerboaError::RuleFailedToMatch(n2)] => { 
+                        assert_eq!(n1.to_string(), "e1");
+                        assert_eq!(n2.to_string(), "e2");
+                    },
+                    _ => { assert!(false); },
+                }
+            },
+            _ => { assert!(false); },
+        }
+    }
+
+    #[test]
+    fn should_indicate_error_from_end_of_input() {
+        let m = Match::free(|_ : &char| true);
+        let r = Rule::fixed("e1", [m.clone(), m.clone()], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+        let r2 = Rule::fixed("e2", [m.clone(), m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r, r2]);
+
+        match output {
+            Err(JerboaError::Multi(es)) => {
+                match &es[..] {
+                    [JerboaError::UnexpectedEndOfInput(n1), JerboaError::UnexpectedEndOfInput(n2)] => { 
+                        assert_eq!(n1.to_string(), "e1");
+                        assert_eq!(n2.to_string(), "e2");
+                    },
+                    _ => { assert!(false); },
+                }
+            },
+            _ => { assert!(false); },
+        }
+    }
+
     // put parser into a transfomer
 
     // everything again with context 
