@@ -48,17 +48,19 @@ impl<T> Match<T> {
     pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T>]) -> bool + 'static>( f : F ) -> Self {
         Match::Context(Rc::new(f), MatchOpt::None)
     }
-    pub fn option(&mut self) {
+    pub fn option(mut self) -> Self {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::Option; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::Option; },
         }
+        self
     }
-    pub fn list(&mut self) {
+    pub fn list(mut self) -> Self {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::List; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::List; },
         }
+        self
     }
 }
 
