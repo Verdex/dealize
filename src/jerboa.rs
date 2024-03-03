@@ -235,4 +235,27 @@ mod test {
 
         assert_eq!(output, [1, 2, 1]);
     }
+
+    #[test]
+    fn should_be_able_to_resuse_match() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let ab_rule = Rule::new("ab", vec![match_a.clone(), match_b.clone()], |_| Ok(1));
+        let ba_rule = Rule::new("ba", vec![match_b, match_a], |_| Ok(2));
+
+        let input = "abba".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[ab_rule, ba_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    // list
+    // option
+    // list after all input is consumed
+    // option after all input is consumed
+    // error from transformer
+    // error from no rules matching
+    // error from all input being consumed
+    // put parser into a transfomer
+
 }
