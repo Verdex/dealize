@@ -181,4 +181,58 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
 mod test {
     use super::*;
 
+    #[test]
+    fn should_parse_empty_input() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
+        let output = parse(&[], &[a_rule]).unwrap();
+
+        assert!(output.is_empty());
+    }
+
+    #[test]
+    fn should_parse_single_match_rule() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
+        let input = "aaaa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1, 1, 1, 1]);
+    }
+
+    #[test]
+    fn should_parse_double_match_rule() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let rule = Rule::new("ab", vec![match_a, match_b], |_| Ok(1));
+        let input = "abab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[rule]).unwrap();
+
+        assert_eq!(output, [1, 1]);
+    }
+
+    #[test]
+    fn should_parse_two_single_rules() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let input = "abab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2, 1, 2]);
+    }
+
+    #[test]
+    fn should_parse_two_rules() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let match_c = Match::free(|c : &char| *c == 'c');
+        let ab_rule = Rule::new("ab", vec![match_a, match_b], |_| Ok(1));
+        let c_rule = Rule::new("c", vec![match_c], |_| Ok(2));
+        let input = "abcab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[ab_rule, c_rule]).unwrap();
+
+        assert_eq!(output, [1, 2, 1]);
+    }
 }
