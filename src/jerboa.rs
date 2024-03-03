@@ -251,13 +251,115 @@ mod test {
         assert_eq!(output, [1, 2]);
     }
 
-    // list
-    // option
-    // list after all input is consumed
-    // option after all input is consumed
+    #[test]
+    fn should_parse_list_rule() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let match_c = Match::free(|c : &char| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "acccb".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_at_end() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_c = Match::free(|c : &char| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "accc".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_with_empty_list() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let match_c = Match::free(|c : &char| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "ab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_list_rule_at_end_with_empty_list() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_c = Match::free(|c : &char| *c == 'c').list();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+    
+    #[test]
+    fn should_parse_option_rule() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let match_c = Match::free(|c : &char| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "acb".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_at_end() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_c = Match::free(|c : &char| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "ac".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_with_nothing() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_b = Match::free(|c : &char| *c == 'b');
+        let match_c = Match::free(|c : &char| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+        let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+
+        let input = "ab".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+
+        assert_eq!(output, [1, 2]);
+    }
+
+    #[test]
+    fn should_parse_option_rule_at_end_with_nothing() {
+        let match_a = Match::free(|c : &char| *c == 'a');
+        let match_c = Match::free(|c : &char| *c == 'c').option();
+        let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[a_rule]).unwrap();
+
+        assert_eq!(output, [1]);
+    }
+
     // error from transformer
     // error from no rules matching
     // error from all input being consumed
     // put parser into a transfomer
+
+    // everything again with context 
 
 }
