@@ -78,6 +78,14 @@ impl<T, S> Rule<T, S> {
     {
         Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
     }
+
+    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    
+        (name : N, matches : [Match<T>; RL], transform : F) -> Self
+        
+    {
+        Rule { name: name.as_ref().into(), matches: matches.into_iter().collect(), transform: Rc::new(transform) }
+    }
 }
 
 pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
