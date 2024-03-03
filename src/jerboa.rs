@@ -39,10 +39,41 @@ pub enum Match<T> {
     Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T>]) -> bool>, MatchOpt),
 }
 
+impl<T> Match<T> {
+    pub fn free<F : Fn(&T) -> bool + 'static>( f : F ) -> Self {
+        Match::Free(Rc::new(f), MatchOpt::None)
+    }
+    pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T>]) -> bool + 'static>( f : F ) -> Self {
+        Match::Context(Rc::new(f), MatchOpt::None)
+    }
+    pub fn option(&mut self) {
+        match self {
+            Match::Free(_, ref mut opt) => { *opt = MatchOpt::Option; },
+            Match::Context(_, ref mut opt) => { *opt = MatchOpt::Option; },
+        }
+    }
+    pub fn list(&mut self) {
+        match self {
+            Match::Free(_, ref mut opt) => { *opt = MatchOpt::List; },
+            Match::Context(_, ref mut opt) => { *opt = MatchOpt::List; },
+        }
+    }
+}
+
 pub struct Rule<T, S> { // TODO should fields be public or should there be some sort of constructor?
     name : Box<str>,
     matches: Vec<Match<T>>,
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError>>,
+}
+
+impl<T, S> Rule<T, S> {
+    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    
+        (name : N, matches : Vec<Match<T>>, transform : F) -> Self
+        
+    {
+        Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
+    }
 }
 
 pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
