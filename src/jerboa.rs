@@ -60,7 +60,7 @@ impl<T> Match<T> {
     }
 }
 
-pub struct Rule<T, S> { // TODO should fields be public or should there be some sort of constructor?
+pub struct Rule<T, S> { 
     name : Box<str>,
     matches: Vec<Match<T>>,
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError>>,
