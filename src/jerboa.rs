@@ -363,11 +363,22 @@ mod test {
         assert_eq!(output, [1]);
     }
 
-    // error from transformer
+    #[test]
+    fn should_indicate_error_from_transformer() {
+        let m = Match::free(|_ : &char| true);
+        let r = Rule::fixed("error", [m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+
+        let input = "a".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r]);
+
+        assert!(output.is_err());
+    }
+
     // error from no rules matching
     // error from all input being consumed
     // put parser into a transfomer
 
     // everything again with context 
+
 
 }
