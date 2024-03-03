@@ -42,7 +42,7 @@ pub enum Match<T> {
 pub struct Rule<T, S> { // TODO should fields be public or should there be some sort of constructor?
     name : Box<str>,
     matches: Vec<Match<T>>,
-    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> S>,
+    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError>>,
 }
 
 pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
@@ -141,7 +141,7 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
             },
         }
     }
-    Ok(((rule.transform)(captures), input))
+    Ok(((rule.transform)(captures)?, input))
 }
 
 #[cfg(test)]
