@@ -7,6 +7,7 @@ pub enum JerboaError {
     RuleFailedToMatch(Box<str>),
     Multi(Vec<JerboaError>),
     Other(Box<dyn std::error::Error>),
+    RuleNotFound(usize),
 }
 
 impl std::fmt::Display for JerboaError {
@@ -16,6 +17,7 @@ impl std::fmt::Display for JerboaError {
             JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
             JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
             JerboaError::Other(e) => write!(f, "Other Error Encountered {:?}", e),
+            JerboaError::RuleNotFound(index) => write!(f, "Encountered Rule match for unknown rule {}", index),
         }
     }
 }
