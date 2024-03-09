@@ -669,4 +669,60 @@ mod test {
 
         assert_eq!(output, ["ab", "cd"]);
     }
+
+    #[test]
+    fn should_indicate_error_for_unknown_rule() {
+        let m = Match::rule(1);
+        let r = Rule::fixed("x", [m], |_| Ok(1));
+
+        let input = "abcd".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r]);
+
+        if let JerboaError::Multi(es) = output.unwrap_err() {
+            assert!(matches!(es[0], JerboaError::RuleNotFound(1)));
+        }
+        else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn should_parse_using_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0)], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_option_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0).option()], |mut cs| Ok(cs.remove(1).unwrap_option_result().unwrap().unwrap() + 2));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_list_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0).list()], |mut cs| Ok(cs.remove(1).unwrap_list_result().unwrap()[0] + 2));
+
+        let input = "baaaa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output[0], 3);
+    }
 }
