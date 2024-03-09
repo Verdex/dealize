@@ -448,8 +448,6 @@ mod test {
         assert_eq!(output, [1]);
     }
 
-    //***********************************
-
     #[test]
     fn should_parse_empty_input_with_context() {
         let match_a = Match::context(|c : &char, _| *c == 'a');
