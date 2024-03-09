@@ -42,6 +42,7 @@ pub enum MatchOpt {
 pub enum Match<T, S> {
     Free(Rc<dyn Fn(&T) -> bool>, MatchOpt),
     Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>, MatchOpt),
+    Rule(usize, MatchOpt),
 }
 
 impl<T, S> Match<T, S> {
@@ -51,10 +52,14 @@ impl<T, S> Match<T, S> {
     pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool + 'static>( f : F ) -> Self {
         Match::Context(Rc::new(f), MatchOpt::None)
     }
+    pub fn rule(index : usize) -> Self {
+        Match::Rule(index, MatchOpt::None)
+    }
     pub fn option(mut self) -> Self {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::Option; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::Option; },
+            Match::Rule(_, ref mut opt) => { *opt = MatchOpt::Option; },
         }
         self
     }
@@ -62,6 +67,7 @@ impl<T, S> Match<T, S> {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::List; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::List; },
+            Match::Rule(_, ref mut opt) => { *opt = MatchOpt::List; },
         }
         self
     }
