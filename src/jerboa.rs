@@ -22,10 +22,11 @@ impl std::fmt::Display for JerboaError {
 
 impl std::error::Error for JerboaError { }
 
-pub enum Capture<'a, T> {
+pub enum Capture<'a, T, S> {
     Item(&'a T),
     Option(Option<&'a T>),
-    List(Vec<&'a T>)
+    List(Vec<&'a T>),
+    RuleResult(S),
 }
 
 #[derive(Clone)]
@@ -36,16 +37,16 @@ pub enum MatchOpt {
 }
 
 #[derive(Clone)]
-pub enum Match<T> {
+pub enum Match<T, S> {
     Free(Rc<dyn Fn(&T) -> bool>, MatchOpt),
-    Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T>]) -> bool>, MatchOpt),
+    Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>, MatchOpt),
 }
 
-impl<T> Match<T> {
+impl<T, S> Match<T, S> {
     pub fn free<F : Fn(&T) -> bool + 'static>( f : F ) -> Self {
         Match::Free(Rc::new(f), MatchOpt::None)
     }
-    pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T>]) -> bool + 'static>( f : F ) -> Self {
+    pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool + 'static>( f : F ) -> Self {
         Match::Context(Rc::new(f), MatchOpt::None)
     }
     pub fn option(mut self) -> Self {
@@ -67,22 +68,22 @@ impl<T> Match<T> {
 #[derive(Clone)]
 pub struct Rule<T, S> { 
     name : Box<str>,
-    matches: Vec<Match<T>>,
-    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError>>,
+    matches: Vec<Match<T, S>>,
+    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError>>,
 }
 
 impl<T, S> Rule<T, S> {
-    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (name : N, matches : Vec<Match<T>>, transform : F) -> Self
+        (name : N, matches : Vec<Match<T, S>>, transform : F) -> Self
         
     {
         Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
     }
 
-    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (name : N, matches : [Match<T>; RL], transform : F) -> Self
+        (name : N, matches : [Match<T, S>; RL], transform : F) -> Self
         
     {
         Rule { name: name.as_ref().into(), matches: matches.into_iter().collect(), transform: Rc::new(transform) }
