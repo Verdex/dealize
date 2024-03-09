@@ -33,6 +33,45 @@ pub enum Capture<'a, T, S> {
     ListRuleResult(Vec<S>),
 }
 
+impl<'a, T, S> Capture<'a, T, S> {
+    pub fn unwrap(self) -> Option<&'a T> {
+        match self {
+            Capture::Item(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_option(self) -> Option<Option<&'a T>> {
+        match self {
+            Capture::Option(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_list(self) -> Option<Vec<&'a T>> {
+        match self {
+            Capture::List(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_result(self) -> Option<S> {
+        match self {
+            Capture::RuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_option_result(self) -> Option<Option<S>> {
+        match self {
+            Capture::OptionRuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_list_result(self) -> Option<Vec<S>> {
+        match self {
+            Capture::ListRuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Clone)]
 pub enum MatchOpt {
     None,
