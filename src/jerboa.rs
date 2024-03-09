@@ -7,6 +7,7 @@ pub enum JerboaError {
     RuleFailedToMatch(Box<str>),
     Multi(Vec<JerboaError>),
     Other(Box<dyn std::error::Error>),
+    RuleNotFound(usize),
 }
 
 impl std::fmt::Display for JerboaError {
@@ -16,16 +17,59 @@ impl std::fmt::Display for JerboaError {
             JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
             JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
             JerboaError::Other(e) => write!(f, "Other Error Encountered {:?}", e),
+            JerboaError::RuleNotFound(index) => write!(f, "Encountered Rule match for unknown rule {}", index),
         }
     }
 }
 
 impl std::error::Error for JerboaError { }
 
-pub enum Capture<'a, T> {
+pub enum Capture<'a, T, S> {
     Item(&'a T),
     Option(Option<&'a T>),
-    List(Vec<&'a T>)
+    List(Vec<&'a T>),
+    RuleResult(S),
+    OptionRuleResult(Option<S>),
+    ListRuleResult(Vec<S>),
+}
+
+impl<'a, T, S> Capture<'a, T, S> {
+    pub fn unwrap(self) -> Option<&'a T> {
+        match self {
+            Capture::Item(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_option(self) -> Option<Option<&'a T>> {
+        match self {
+            Capture::Option(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_list(self) -> Option<Vec<&'a T>> {
+        match self {
+            Capture::List(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_result(self) -> Option<S> {
+        match self {
+            Capture::RuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_option_result(self) -> Option<Option<S>> {
+        match self {
+            Capture::OptionRuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_list_result(self) -> Option<Vec<S>> {
+        match self {
+            Capture::ListRuleResult(x) => Some(x),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -36,22 +80,27 @@ pub enum MatchOpt {
 }
 
 #[derive(Clone)]
-pub enum Match<T> {
+pub enum Match<T, S> {
     Free(Rc<dyn Fn(&T) -> bool>, MatchOpt),
-    Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T>]) -> bool>, MatchOpt),
+    Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>, MatchOpt),
+    Rule(usize, MatchOpt),
 }
 
-impl<T> Match<T> {
+impl<T, S> Match<T, S> {
     pub fn free<F : Fn(&T) -> bool + 'static>( f : F ) -> Self {
         Match::Free(Rc::new(f), MatchOpt::None)
     }
-    pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T>]) -> bool + 'static>( f : F ) -> Self {
+    pub fn context<F : for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool + 'static>( f : F ) -> Self {
         Match::Context(Rc::new(f), MatchOpt::None)
+    }
+    pub fn rule(index : usize) -> Self {
+        Match::Rule(index, MatchOpt::None)
     }
     pub fn option(mut self) -> Self {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::Option; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::Option; },
+            Match::Rule(_, ref mut opt) => { *opt = MatchOpt::Option; },
         }
         self
     }
@@ -59,6 +108,7 @@ impl<T> Match<T> {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::List; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::List; },
+            Match::Rule(_, ref mut opt) => { *opt = MatchOpt::List; },
         }
         self
     }
@@ -67,22 +117,22 @@ impl<T> Match<T> {
 #[derive(Clone)]
 pub struct Rule<T, S> { 
     name : Box<str>,
-    matches: Vec<Match<T>>,
-    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError>>,
+    matches: Vec<Match<T, S>>,
+    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError>>,
 }
 
 impl<T, S> Rule<T, S> {
-    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (name : N, matches : Vec<Match<T>>, transform : F) -> Self
+        (name : N, matches : Vec<Match<T, S>>, transform : F) -> Self
         
     {
         Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
     }
 
-    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T>>) -> Result<S, JerboaError> + 'static>
+    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (name : N, matches : [Match<T>; RL], transform : F) -> Self
+        (name : N, matches : [Match<T, S>; RL], transform : F) -> Self
         
     {
         Rule { name: name.as_ref().into(), matches: matches.into_iter().collect(), transform: Rc::new(transform) }
@@ -94,7 +144,7 @@ pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Jer
     'outer : while !input.is_empty() {
         let mut errors = vec![];
         for rule in rules {
-            match try_rule(input, rule) {
+            match try_rule(input, rule, rules) {
                 Ok((result, new_input)) => {
                     results.push(result);
                     input = new_input;
@@ -108,7 +158,7 @@ pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Jer
     Ok(results)
 }
 
-fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a [T]), JerboaError> {
+fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>, rules : &[Rule<T, S>]) -> Result<(S, &'a [T]), JerboaError> {
     let mut captures = vec![];
     for m in &rule.matches {
         match (input, m) {
@@ -119,6 +169,11 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
             },
             ([x, r @ ..], Match::Context(f, MatchOpt::None)) if f(x, &captures) => {
                 captures.push(Capture::Item(x));      
+                input = r;
+            },
+            (_, Match::Rule(index, MatchOpt::None)) if *index < rules.len() => {
+                let (value, r) = try_rule(input, &rules[*index], rules)?;
+                captures.push(Capture::RuleResult(value));
                 input = r;
             },
 
@@ -136,6 +191,17 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
             },
             (_, Match::Context(_, MatchOpt::Option)) => {
                 captures.push(Capture::Option(None));      
+            },
+            (_, Match::Rule(index, MatchOpt::Option)) if *index < rules.len() => {
+                match try_rule(input, &rules[*index], rules) {
+                    Ok((value, r)) => { 
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    },
+                }
             },
 
             // List
@@ -175,8 +241,26 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
             (_, Match::Context(_, MatchOpt::List)) => {
                 captures.push(Capture::List(vec![]));
             },
+            (_, Match::Rule(index, MatchOpt::List)) if *index < rules.len() => {
+                let mut local = vec![];
+                loop {
+                    match try_rule(input, &rules[*index], rules) {
+                        Ok((value, r)) => { 
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
 
             // Error
+            (_, Match::Rule(index, _)) if *index >= rules.len() => {
+                return Err(JerboaError::RuleNotFound(*index));
+            },
             ([], _) => {
                 return Err(JerboaError::UnexpectedEndOfInput(rule.name.clone()));
             },
@@ -363,8 +447,6 @@ mod test {
 
         assert_eq!(output, [1]);
     }
-
-    //***********************************
 
     #[test]
     fn should_parse_empty_input_with_context() {
@@ -584,5 +666,61 @@ mod test {
         let output = parse(&input, &[r]).unwrap();
 
         assert_eq!(output, ["ab", "cd"]);
+    }
+
+    #[test]
+    fn should_indicate_error_for_unknown_rule() {
+        let m = Match::rule(1);
+        let r = Rule::fixed("x", [m], |_| Ok(1));
+
+        let input = "abcd".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r]);
+
+        if let JerboaError::Multi(es) = output.unwrap_err() {
+            assert!(matches!(es[0], JerboaError::RuleNotFound(1)));
+        }
+        else {
+            assert!(false);
+        }
+    }
+
+    #[test]
+    fn should_parse_using_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0)], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_option_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0).option()], |mut cs| Ok(cs.remove(1).unwrap_option_result().unwrap().unwrap() + 2));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_list_match_rule() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule(0).list()], |mut cs| Ok(cs.remove(1).unwrap_list_result().unwrap()[0] + 2));
+
+        let input = "baaaa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &[r1, r2]).unwrap();
+
+        assert_eq!(output[0], 3);
     }
 }
