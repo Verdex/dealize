@@ -29,6 +29,8 @@ pub enum Capture<'a, T, S> {
     Option(Option<&'a T>),
     List(Vec<&'a T>),
     RuleResult(S),
+    OptionRuleResult(Option<S>),
+    ListRuleResult(Vec<S>),
 }
 
 #[derive(Clone)]
@@ -151,6 +153,17 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>, rules : &[Rule<T,
             (_, Match::Context(_, MatchOpt::Option)) => {
                 captures.push(Capture::Option(None));      
             },
+            (_, Match::Rule(index, MatchOpt::Option)) if *index < rules.len() => {
+                match try_rule(input, &rules[*index], rules) {
+                    Ok((value, r)) => { 
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    },
+                }
+            },
 
             // List
             ([x, r @ ..], Match::Free(f, MatchOpt::List)) => {
@@ -189,8 +202,26 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>, rules : &[Rule<T,
             (_, Match::Context(_, MatchOpt::List)) => {
                 captures.push(Capture::List(vec![]));
             },
+            (_, Match::Rule(index, MatchOpt::List)) if *index < rules.len() => {
+                let mut local = vec![];
+                loop {
+                    match try_rule(input, &rules[*index], rules) {
+                        Ok((value, r)) => { 
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
 
             // Error
+            (_, Match::Rule(index, _)) if *index >= rules.len() => {
+                return Err(JerboaError::RuleNotFound(*index));
+            },
             ([], _) => {
                 return Err(JerboaError::UnexpectedEndOfInput(rule.name.clone()));
             },
