@@ -103,7 +103,7 @@ pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Jer
     'outer : while !input.is_empty() {
         let mut errors = vec![];
         for rule in rules {
-            match try_rule(input, rule) {
+            match try_rule(input, rule, rules) {
                 Ok((result, new_input)) => {
                     results.push(result);
                     input = new_input;
@@ -117,7 +117,7 @@ pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, Jer
     Ok(results)
 }
 
-fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a [T]), JerboaError> {
+fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>, rules : &[Rule<T, S>]) -> Result<(S, &'a [T]), JerboaError> {
     let mut captures = vec![];
     for m in &rule.matches {
         match (input, m) {
@@ -128,6 +128,11 @@ fn try_rule<'a, T, S>(mut input : &'a [T], rule : &Rule<T, S>) -> Result<(S, &'a
             },
             ([x, r @ ..], Match::Context(f, MatchOpt::None)) if f(x, &captures) => {
                 captures.push(Capture::Item(x));      
+                input = r;
+            },
+            (_, Match::Rule(index, MatchOpt::None)) if *index < rules.len() => {
+                let (value, r) = try_rule(input, &rules[*index], rules)?;
+                captures.push(Capture::RuleResult(value));
                 input = r;
             },
 
