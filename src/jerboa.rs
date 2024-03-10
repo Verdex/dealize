@@ -725,7 +725,7 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a")], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
 
         let input = "baa".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r1, r2]).unwrap();
+        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
 
         assert_eq!(output.len(), 1);
         assert_eq!(output[0], 3);
@@ -739,7 +739,7 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a").option()], |mut cs| Ok(cs.remove(1).unwrap_option_result().unwrap().unwrap() + 2));
 
         let input = "baa".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r1, r2]).unwrap();
+        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
 
         assert_eq!(output[0], 3);
     }
@@ -752,7 +752,7 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a").list()], |mut cs| Ok(cs.remove(1).unwrap_list_result().unwrap()[0] + 2));
 
         let input = "baaaa".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r1, r2]).unwrap();
+        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
 
         assert_eq!(output[0], 3);
     }
