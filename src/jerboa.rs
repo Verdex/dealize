@@ -746,20 +746,4 @@ mod test {
 
         assert_eq!(output[0], 3);
     }
-
-    /*#[test]
-    fn should_parse_matching_brackets() {
-        enum Out {
-            Curl(Vec<Out>),
-            Paren(Vec<Out>),
-            Char(char),
-        }
-        let anything_but_bracket = Match::free(|c : &char| match c {
-            '{' | '}' | '(' | ')' => false,
-            _ => true,
-        });
-        //let parens = Rule::fixed("paren", )
-
-
-    }*/
 }
