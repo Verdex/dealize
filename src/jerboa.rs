@@ -139,7 +139,11 @@ impl<T, S> Rule<T, S> {
     }
 }
 
-pub fn parse<T, S>(mut input : &[T], rules: &[Rule<T, S>], dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
+pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
+    parse_with_lookup(input, rules, &[])
+}
+
+pub fn parse_with_lookup<T, S>(mut input : &[T], rules: &[Rule<T, S>], dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
     let mut results = vec![];
     'outer : while !input.is_empty() {
         let mut errors = vec![];
