@@ -84,6 +84,7 @@ pub enum Match<T, S> {
     Free(Rc<dyn Fn(&T) -> bool>, MatchOpt),
     Context(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>, MatchOpt),
     Rule(Box<str>, MatchOpt),
+    RuleChoice(Vec<Box<str>>, MatchOpt),
 }
 
 impl<T, S> Match<T, S> {
@@ -96,11 +97,15 @@ impl<T, S> Match<T, S> {
     pub fn rule<N : AsRef<str>>(name : N) -> Self {
         Match::Rule(name.as_ref().into(), MatchOpt::None)
     }
+    pub fn rule_choice<N : AsRef<str>>(names : &[N]) -> Self {
+        Match::RuleChoice(names.iter().map(|x| x.as_ref().into()).collect(), MatchOpt::None)
+    }
     pub fn option(mut self) -> Self {
         match self {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::Option; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::Option; },
             Match::Rule(_, ref mut opt) => { *opt = MatchOpt::Option; },
+            Match::RuleChoice(_, ref mut opt) => { *opt = MatchOpt::Option },
         }
         self
     }
@@ -109,6 +114,7 @@ impl<T, S> Match<T, S> {
             Match::Free(_, ref mut opt) => { *opt = MatchOpt::List; },
             Match::Context(_, ref mut opt) => { *opt = MatchOpt::List; },
             Match::Rule(_, ref mut opt) => { *opt = MatchOpt::List; },
+            Match::RuleChoice(_, ref mut opt) => { *opt = MatchOpt::List },
         }
         self
     }
@@ -187,6 +193,23 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::RuleResult(value));
                 input = r;
             },
+            /*(_, Match::RuleChoice(names, MatchOpt::None)) => {
+                let mut errors = vec![];
+                for name in names {
+                    if !has_rule(name, dictionary) {
+                        return Err(JerboaError::RuleNotFound(name.clone()));
+                    }
+                    match try_rule(input, , rules, dictionary) {
+                        Ok((result, new_input)) => {
+                            results.push(result);
+                            input = new_input;
+                            continue 'outer;
+                        },
+                        Err(e) => { errors.push(e); },
+                    }
+                }
+                return Err(JerboaError::Multi(errors));
+            },*/
 
             // Option
             ([x, r @ ..], Match::Free(f, MatchOpt::Option)) if f(x) => {
