@@ -145,32 +145,44 @@ impl<T, S> Rule<T, S> {
     }
 }
 
-pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
-    parse_with_lookup(input, rules, &[])
-}
-
-pub fn parse_with_lookup<T, S>(mut input : &[T], rules: &[Rule<T, S>], dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
+pub fn parse<T, S>(mut input : &[T], start_rule: &Rule<T, S>, dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
     let mut results = vec![];
-    'outer : while !input.is_empty() {
-        let mut errors = vec![];
-        for rule in rules {
-            match try_rule(input, rule, rules, dictionary) {
-                Ok((result, new_input)) => {
-                    results.push(result);
-                    input = new_input;
-                    continue 'outer;
-                },
-                Err(e) => { errors.push(e); },
-            }
+    while !input.is_empty() {
+        match try_rule(input, start_rule, dictionary) {
+            Ok((result, new_input)) => {
+                results.push(result);
+                input = new_input;
+            },
+            Err(e) => { return Err(e); },
         }
-        return Err(JerboaError::Multi(errors));
     } 
     Ok(results)
 }
 
+fn try_rule_choices<'a, T, S>( input : &'a [T]
+                             , names : &[Box<str>]
+                             , dictionary : &[Rule<T, S>]
+                            
+                             ) -> Result<(S, &'a [T]), JerboaError> {
+
+    let mut errors = vec![];
+    for name in names {
+        let rule = get_rule(name, dictionary)?;
+        match try_rule(input, rule, dictionary) {
+            Ok((result, new_input)) => {
+                return Ok((result, new_input));
+            },
+            Err(e) => { errors.push(e); },
+        }
+    }
+
+    Err(JerboaError::Multi(errors))
+}
+
+
+
 fn try_rule<'a, T, S>( mut input : &'a [T]
                      , rule : &Rule<T, S>
-                     , rules : &[Rule<T, S>]
                      , dictionary : &[Rule<T, S>]
 
                      ) -> Result<(S, &'a [T]), JerboaError> {
@@ -188,28 +200,16 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 input = r;
             },
             (_, Match::Rule(name, MatchOpt::None)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
-                let (value, r) = try_rule(input, target_rule, rules, dictionary)?;
+                let target_rule = get_rule(name, dictionary).unwrap();
+                let (value, r) = try_rule(input, target_rule, dictionary)?;
                 captures.push(Capture::RuleResult(value));
                 input = r;
             },
-            /*(_, Match::RuleChoice(names, MatchOpt::None)) => {
-                let mut errors = vec![];
-                for name in names {
-                    if !has_rule(name, dictionary) {
-                        return Err(JerboaError::RuleNotFound(name.clone()));
-                    }
-                    match try_rule(input, , rules, dictionary) {
-                        Ok((result, new_input)) => {
-                            results.push(result);
-                            input = new_input;
-                            continue 'outer;
-                        },
-                        Err(e) => { errors.push(e); },
-                    }
-                }
-                return Err(JerboaError::Multi(errors));
-            },*/
+            (_, Match::RuleChoice(names, MatchOpt::None)) => {
+                let (value, r) = try_rule_choices(input, names, dictionary)?;
+                captures.push(Capture::RuleResult(value));
+                input = r;
+            },
 
             // Option
             ([x, r @ ..], Match::Free(f, MatchOpt::Option)) if f(x) => {
@@ -227,8 +227,8 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::Option(None));      
             },
             (_, Match::Rule(name, MatchOpt::Option)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
-                match try_rule(input, target_rule, rules, dictionary) {
+                let target_rule = get_rule(name, dictionary).unwrap();
+                match try_rule(input, target_rule, dictionary) {
                     Ok((value, r)) => { 
                         captures.push(Capture::OptionRuleResult(Some(value)));
                         input = r;
@@ -277,10 +277,10 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::List(vec![]));
             },
             (_, Match::Rule(name, MatchOpt::List)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
+                let target_rule = get_rule(name, dictionary).unwrap();
                 let mut local = vec![];
                 loop {
-                    match try_rule(input, target_rule, rules, dictionary) {
+                    match try_rule(input, target_rule, dictionary) {
                         Ok((value, r)) => { 
                             local.push(value);
                             input = r;
@@ -318,14 +318,14 @@ fn has_rule<T, S>(name : &str, rules : &[Rule<T, S>]) -> bool {
     false
 }
 
-fn get_rule<'a, T, S>(name : &str, rules : &'a [Rule<T, S>]) -> Option<&'a Rule<T, S>>{
+fn get_rule<'a, T, S>(name : &str, rules : &'a [Rule<T, S>]) -> Result<&'a Rule<T, S>, JerboaError>{
     let name : Box<str> = name.into();
     for r in rules {
         if r.name == name {
-            return Some(r);
+            return Ok(r);
         }
     } 
-    None
+    Err(JerboaError::RuleNotFound(name))
 }
 
 #[cfg(test)]
