@@ -368,7 +368,7 @@ mod test {
         let match_b = Match::free(|c : &char| *c == 'b');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
         let input = "abab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
@@ -382,7 +382,7 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c');
         let ab_rule = Rule::new("ab", vec![match_a, match_b], |_| Ok(1));
         let c_rule = Rule::new("c", vec![match_c], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "c"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "c"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
         let input = "abcab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[ab_rule, c_rule]).unwrap();
 
@@ -395,7 +395,7 @@ mod test {
         let match_b = Match::free(|c : &char| *c == 'b');
         let ab_rule = Rule::new("ab", vec![match_a.clone(), match_b.clone()], |_| Ok(1));
         let ba_rule = Rule::new("ba", vec![match_b, match_a], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "ba"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "ba"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "abba".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[ab_rule, ba_rule]).unwrap();
@@ -410,7 +410,7 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acccb".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -437,7 +437,7 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -464,7 +464,7 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acb".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -491,7 +491,7 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -537,7 +537,7 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acccb".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -564,7 +564,7 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -591,7 +591,7 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acb".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -618,7 +618,7 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
@@ -655,7 +655,7 @@ mod test {
         });
         let r1 = Rule::fixed("add1", [digit.clone(), digit.clone(), added.clone()], |_| Ok(1));
         let r2 = Rule::fixed("add2", [digit.clone(), digit.clone(), digit, added], |_| Ok(2));
-        let main = Rule::fixed("main", [Match::rule_choice(&["add1", "add2"])], |_| Ok(1));
+        let main = Rule::fixed("main", [Match::rule_choice(&["add1", "add2"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "1247123".chars().collect::<Vec<_>>();
         let output = parse(&input, &main, &[r1, r2]).unwrap();
@@ -746,8 +746,8 @@ mod test {
         let input = "abcd".chars().collect::<Vec<_>>();
         let output = parse(&input, &r.clone(), &[r]);
 
-        if let JerboaError::Multi(es) = output.unwrap_err() {
-            assert!(matches!(es[0], JerboaError::RuleNotFound(_)));
+        if let JerboaError::RuleNotFound(name) = output.unwrap_err() {
+            assert_eq!(name, "unknown".into());
         }
         else {
             assert!(false);
