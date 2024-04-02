@@ -179,8 +179,6 @@ fn try_rule_choices<'a, T, S>( input : &'a [T]
     Err(JerboaError::Multi(errors))
 }
 
-
-
 fn try_rule<'a, T, S>( mut input : &'a [T]
                      , rule : &Rule<T, S>
                      , dictionary : &[Rule<T, S>]
