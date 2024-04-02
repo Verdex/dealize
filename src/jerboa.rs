@@ -236,6 +236,17 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                     },
                 }
             },
+            (_, Match::RuleChoice(names, MatchOpt::Option)) => {
+                match try_rule_choices(input, names, dictionary) {
+                    Ok((value, r)) => {
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    }
+                }
+            },
 
             // List
             ([x, r @ ..], Match::Free(f, MatchOpt::List)) => {
@@ -280,6 +291,21 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 loop {
                     match try_rule(input, target_rule, dictionary) {
                         Ok((value, r)) => { 
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
+            (_, Match::RuleChoice(names, MatchOpt::List)) => {
+                let mut local = vec![];
+                loop {
+                    match try_rule_choices(input, names, dictionary) {
+                        Ok((value, r)) => {
                             local.push(value);
                             input = r;
                         },
