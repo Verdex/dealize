@@ -817,4 +817,45 @@ mod test {
 
         assert_eq!(output[0], 3);
     }
+
+    #[test]
+    fn should_parse_using_match_rule_choice() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule("a")], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "baa"])], |mut cs| Ok(cs.remove(0).unwrap_result().unwrap()));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[r1, r2]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_option_match_rule_choice() {
+        let ra = Rule::fixed("a", [Match::free(|a : &char| *a == 'a')], |_| Ok(1));
+        let rb = Rule::fixed("b", [Match::free(|a : &char| *a == 'b')], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"]).option()], |mut cs| Ok(cs.remove(0).unwrap_option_result().unwrap().unwrap()));
+
+        let input = "b".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[ra, rb]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 2);
+    }
+
+    #[test]
+    fn should_parse_using_list_match_rule_choice() {
+        let ra = Rule::fixed("a", [Match::free(|a : &char| *a == 'a')], |_| Ok(1));
+        let rb = Rule::fixed("b", [Match::free(|a : &char| *a == 'b')], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"]).list()], |mut cs| Ok(cs.remove(0).unwrap_list_result().unwrap().into_iter().sum()));
+
+        let input = "bba".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[ra, rb]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 5);
+    }
 }
