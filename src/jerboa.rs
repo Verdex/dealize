@@ -145,32 +145,42 @@ impl<T, S> Rule<T, S> {
     }
 }
 
-pub fn parse<T, S>(input : &[T], rules: &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
-    parse_with_lookup(input, rules, &[])
-}
-
-pub fn parse_with_lookup<T, S>(mut input : &[T], rules: &[Rule<T, S>], dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
+pub fn parse<T, S>(mut input : &[T], start_rule: &Rule<T, S>, dictionary : &[Rule<T, S>]) -> Result<Vec<S>, JerboaError> { 
     let mut results = vec![];
-    'outer : while !input.is_empty() {
-        let mut errors = vec![];
-        for rule in rules {
-            match try_rule(input, rule, rules, dictionary) {
-                Ok((result, new_input)) => {
-                    results.push(result);
-                    input = new_input;
-                    continue 'outer;
-                },
-                Err(e) => { errors.push(e); },
-            }
+    while !input.is_empty() {
+        match try_rule(input, start_rule, dictionary) {
+            Ok((result, new_input)) => {
+                results.push(result);
+                input = new_input;
+            },
+            Err(e) => { return Err(e); },
         }
-        return Err(JerboaError::Multi(errors));
     } 
     Ok(results)
 }
 
+fn try_rule_choices<'a, T, S>( input : &'a [T]
+                             , names : &[Box<str>]
+                             , dictionary : &[Rule<T, S>]
+                            
+                             ) -> Result<(S, &'a [T]), JerboaError> {
+
+    let mut errors = vec![];
+    for name in names {
+        let rule = get_rule(name, dictionary)?;
+        match try_rule(input, rule, dictionary) {
+            Ok((result, new_input)) => {
+                return Ok((result, new_input));
+            },
+            Err(e) => { errors.push(e); },
+        }
+    }
+
+    Err(JerboaError::Multi(errors))
+}
+
 fn try_rule<'a, T, S>( mut input : &'a [T]
                      , rule : &Rule<T, S>
-                     , rules : &[Rule<T, S>]
                      , dictionary : &[Rule<T, S>]
 
                      ) -> Result<(S, &'a [T]), JerboaError> {
@@ -188,28 +198,16 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 input = r;
             },
             (_, Match::Rule(name, MatchOpt::None)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
-                let (value, r) = try_rule(input, target_rule, rules, dictionary)?;
+                let target_rule = get_rule(name, dictionary).unwrap();
+                let (value, r) = try_rule(input, target_rule, dictionary)?;
                 captures.push(Capture::RuleResult(value));
                 input = r;
             },
-            /*(_, Match::RuleChoice(names, MatchOpt::None)) => {
-                let mut errors = vec![];
-                for name in names {
-                    if !has_rule(name, dictionary) {
-                        return Err(JerboaError::RuleNotFound(name.clone()));
-                    }
-                    match try_rule(input, , rules, dictionary) {
-                        Ok((result, new_input)) => {
-                            results.push(result);
-                            input = new_input;
-                            continue 'outer;
-                        },
-                        Err(e) => { errors.push(e); },
-                    }
-                }
-                return Err(JerboaError::Multi(errors));
-            },*/
+            (_, Match::RuleChoice(names, MatchOpt::None)) => {
+                let (value, r) = try_rule_choices(input, names, dictionary)?;
+                captures.push(Capture::RuleResult(value));
+                input = r;
+            },
 
             // Option
             ([x, r @ ..], Match::Free(f, MatchOpt::Option)) if f(x) => {
@@ -227,8 +225,8 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::Option(None));      
             },
             (_, Match::Rule(name, MatchOpt::Option)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
-                match try_rule(input, target_rule, rules, dictionary) {
+                let target_rule = get_rule(name, dictionary).unwrap();
+                match try_rule(input, target_rule, dictionary) {
                     Ok((value, r)) => { 
                         captures.push(Capture::OptionRuleResult(Some(value)));
                         input = r;
@@ -236,6 +234,17 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                     Err(_) => {
                         captures.push(Capture::OptionRuleResult(None));
                     },
+                }
+            },
+            (_, Match::RuleChoice(names, MatchOpt::Option)) => {
+                match try_rule_choices(input, names, dictionary) {
+                    Ok((value, r)) => {
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    }
                 }
             },
 
@@ -277,11 +286,26 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::List(vec![]));
             },
             (_, Match::Rule(name, MatchOpt::List)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, rules).unwrap();
+                let target_rule = get_rule(name, dictionary).unwrap();
                 let mut local = vec![];
                 loop {
-                    match try_rule(input, target_rule, rules, dictionary) {
+                    match try_rule(input, target_rule, dictionary) {
                         Ok((value, r)) => { 
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
+            (_, Match::RuleChoice(names, MatchOpt::List)) => {
+                let mut local = vec![];
+                loop {
+                    match try_rule_choices(input, names, dictionary) {
+                        Ok((value, r)) => {
                             local.push(value);
                             input = r;
                         },
@@ -318,14 +342,14 @@ fn has_rule<T, S>(name : &str, rules : &[Rule<T, S>]) -> bool {
     false
 }
 
-fn get_rule<'a, T, S>(name : &str, rules : &'a [Rule<T, S>]) -> Option<&'a Rule<T, S>>{
+fn get_rule<'a, T, S>(name : &str, rules : &'a [Rule<T, S>]) -> Result<&'a Rule<T, S>, JerboaError>{
     let name : Box<str> = name.into();
     for r in rules {
         if r.name == name {
-            return Some(r);
+            return Ok(r);
         }
     } 
-    None
+    Err(JerboaError::RuleNotFound(name))
 }
 
 #[cfg(test)]
@@ -336,7 +360,7 @@ mod test {
     fn should_parse_empty_input() {
         let match_a = Match::free(|c : &char| *c == 'a');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
-        let output = parse(&[], &[a_rule]).unwrap();
+        let output = parse(&[], &a_rule.clone(), &[a_rule]).unwrap();
 
         assert!(output.is_empty());
     }
@@ -346,7 +370,7 @@ mod test {
         let match_a = Match::free(|c : &char| *c == 'a');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
         let input = "aaaa".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1, 1, 1, 1]);
     }
@@ -357,7 +381,7 @@ mod test {
         let match_b = Match::free(|c : &char| *c == 'b');
         let rule = Rule::new("ab", vec![match_a, match_b], |_| Ok(1));
         let input = "abab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[rule]).unwrap();
+        let output = parse(&input, &rule.clone(), &[rule]).unwrap();
 
         assert_eq!(output, [1, 1]);
     }
@@ -368,8 +392,9 @@ mod test {
         let match_b = Match::free(|c : &char| *c == 'b');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
         let input = "abab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2, 1, 2]);
     }
@@ -381,8 +406,9 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c');
         let ab_rule = Rule::new("ab", vec![match_a, match_b], |_| Ok(1));
         let c_rule = Rule::new("c", vec![match_c], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "c"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
         let input = "abcab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[ab_rule, c_rule]).unwrap();
+        let output = parse(&input, &main, &[ab_rule, c_rule]).unwrap();
 
         assert_eq!(output, [1, 2, 1]);
     }
@@ -393,9 +419,10 @@ mod test {
         let match_b = Match::free(|c : &char| *c == 'b');
         let ab_rule = Rule::new("ab", vec![match_a.clone(), match_b.clone()], |_| Ok(1));
         let ba_rule = Rule::new("ba", vec![match_b, match_a], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ab", "ba"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "abba".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[ab_rule, ba_rule]).unwrap();
+        let output = parse(&input, &main, &[ab_rule, ba_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -407,9 +434,10 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acccb".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -421,7 +449,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "accc".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -433,9 +461,10 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -447,7 +476,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -459,9 +488,10 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acb".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -473,7 +503,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "ac".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -485,9 +515,10 @@ mod test {
         let match_c = Match::free(|c : &char| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -499,7 +530,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -508,7 +539,7 @@ mod test {
     fn should_parse_empty_input_with_context() {
         let match_a = Match::context(|c : &char, _| *c == 'a');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
-        let output = parse(&[], &[a_rule]).unwrap();
+        let output = parse(&[], &a_rule.clone(), &[a_rule]).unwrap();
 
         assert!(output.is_empty());
     }
@@ -518,7 +549,7 @@ mod test {
         let match_a = Match::context(|c : &char, _| *c == 'a');
         let a_rule = Rule::new("a", vec![match_a], |_| Ok(1));
         let input = "aaaa".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1, 1, 1, 1]);
     }
@@ -530,9 +561,10 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acccb".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -544,7 +576,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "accc".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -556,9 +588,10 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').list();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -570,7 +603,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -582,9 +615,10 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "acb".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -596,7 +630,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "ac".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -608,9 +642,10 @@ mod test {
         let match_c = Match::context(|c : &char, _| *c == 'c').option();
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
         let b_rule = Rule::new("b", vec![match_b], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["ac", "b"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "ab".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule, b_rule]).unwrap();
+        let output = parse(&input, &main, &[a_rule, b_rule]).unwrap();
 
         assert_eq!(output, [1, 2]);
     }
@@ -622,7 +657,7 @@ mod test {
         let a_rule = Rule::new("ac", vec![match_a, match_c], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[a_rule]).unwrap();
+        let output = parse(&input, &a_rule.clone(), &[a_rule]).unwrap();
 
         assert_eq!(output, [1]);
     }
@@ -642,11 +677,12 @@ mod test {
                 false
             }
         });
-        let r1 = Rule::fixed("add", [digit.clone(), digit.clone(), added.clone()], |_| Ok(1));
-        let r2 = Rule::fixed("add", [digit.clone(), digit.clone(), digit, added], |_| Ok(2));
+        let r1 = Rule::fixed("add1", [digit.clone(), digit.clone(), added.clone()], |_| Ok(1));
+        let r2 = Rule::fixed("add2", [digit.clone(), digit.clone(), digit, added], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["add1", "add2"])], |mut x| Ok(x.remove(0).unwrap_result().unwrap()));
 
         let input = "1247123".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r1, r2]).unwrap();
+        let output = parse(&input, &main, &[r1, r2]).unwrap();
 
         assert_eq!(output, [2, 1]);
     }
@@ -657,7 +693,7 @@ mod test {
         let r = Rule::fixed("error", [m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r]);
+        let output = parse(&input, &r.clone(), &[r]);
 
         assert!(matches!(output, Err(JerboaError::Multi(_))));
     }
@@ -667,9 +703,10 @@ mod test {
         let m = Match::free(|_ : &char| false);
         let r = Rule::fixed("e1", [m.clone()], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
         let r2 = Rule::fixed("e2", [m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+        let main = Rule::fixed("main", [Match::rule_choice(&["e1", "e2"])], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r, r2]);
+        let output = parse(&input, &main, &[r, r2]);
 
         match output {
             Err(JerboaError::Multi(es)) => {
@@ -690,9 +727,10 @@ mod test {
         let m = Match::free(|_ : &char| true);
         let r = Rule::fixed("e1", [m.clone(), m.clone()], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
         let r2 = Rule::fixed("e2", [m.clone(), m], |_| -> Result<u8, _> { Err(JerboaError::Multi(vec![])) });
+        let main = Rule::fixed("main", [Match::rule_choice(&["e1", "e2"])], |_| Ok(1));
 
         let input = "a".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r, r2]);
+        let output = parse(&input, &main, &[r, r2]);
 
         match output {
             Err(JerboaError::Multi(es)) => {
@@ -719,7 +757,7 @@ mod test {
         });
 
         let input = "abcd".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r]).unwrap();
+        let output = parse(&input, &r.clone(), &[r]).unwrap();
 
         assert_eq!(output, ["ab", "cd"]);
     }
@@ -730,10 +768,10 @@ mod test {
         let r = Rule::fixed("x", [m], |_| Ok(1));
 
         let input = "abcd".chars().collect::<Vec<_>>();
-        let output = parse(&input, &[r]);
+        let output = parse(&input, &r.clone(), &[r]);
 
-        if let JerboaError::Multi(es) = output.unwrap_err() {
-            assert!(matches!(es[0], JerboaError::RuleNotFound(_)));
+        if let JerboaError::RuleNotFound(name) = output.unwrap_err() {
+            assert_eq!(name, "unknown".into());
         }
         else {
             assert!(false);
@@ -748,7 +786,7 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a")], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
 
         let input = "baa".chars().collect::<Vec<_>>();
-        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
+        let output = parse(&input, &r2.clone(), &[r1, r2]).unwrap();
 
         assert_eq!(output.len(), 1);
         assert_eq!(output[0], 3);
@@ -762,7 +800,7 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a").option()], |mut cs| Ok(cs.remove(1).unwrap_option_result().unwrap().unwrap() + 2));
 
         let input = "baa".chars().collect::<Vec<_>>();
-        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
+        let output = parse(&input, &r2.clone(), &[r1, r2]).unwrap();
 
         assert_eq!(output[0], 3);
     }
@@ -775,8 +813,49 @@ mod test {
         let r2 = Rule::fixed("baa", [m2, Match::rule("a").list()], |mut cs| Ok(cs.remove(1).unwrap_list_result().unwrap()[0] + 2));
 
         let input = "baaaa".chars().collect::<Vec<_>>();
-        let output = parse_with_lookup(&input, &[r1.clone(), r2], &[r1]).unwrap();
+        let output = parse(&input, &r2.clone(), &[r1, r2]).unwrap();
 
         assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_match_rule_choice() {
+        let m1 = Match::free(|a : &char| *a == 'a');
+        let m2 : Match<char, u8> = Match::free(|a : &char| *a == 'b');
+        let r1 = Rule::fixed("a", [m1.clone(), m1], |_| Ok(1));
+        let r2 = Rule::fixed("baa", [m2, Match::rule("a")], |mut cs| Ok(cs.remove(1).unwrap_result().unwrap() + 2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "baa"])], |mut cs| Ok(cs.remove(0).unwrap_result().unwrap()));
+
+        let input = "baa".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[r1, r2]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 3);
+    }
+
+    #[test]
+    fn should_parse_using_option_match_rule_choice() {
+        let ra = Rule::fixed("a", [Match::free(|a : &char| *a == 'a')], |_| Ok(1));
+        let rb = Rule::fixed("b", [Match::free(|a : &char| *a == 'b')], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"]).option()], |mut cs| Ok(cs.remove(0).unwrap_option_result().unwrap().unwrap()));
+
+        let input = "b".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[ra, rb]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 2);
+    }
+
+    #[test]
+    fn should_parse_using_list_match_rule_choice() {
+        let ra = Rule::fixed("a", [Match::free(|a : &char| *a == 'a')], |_| Ok(1));
+        let rb = Rule::fixed("b", [Match::free(|a : &char| *a == 'b')], |_| Ok(2));
+        let main = Rule::fixed("main", [Match::rule_choice(&["a", "b"]).list()], |mut cs| Ok(cs.remove(0).unwrap_list_result().unwrap().into_iter().sum()));
+
+        let input = "bba".chars().collect::<Vec<_>>();
+        let output = parse(&input, &main, &[ra, rb]).unwrap();
+
+        assert_eq!(output.len(), 1);
+        assert_eq!(output[0], 5);
     }
 }
