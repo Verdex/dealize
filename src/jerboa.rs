@@ -7,6 +7,40 @@ pub enum JerboaError {
     RuleFailedToMatch(Box<str>),
     Multi(Vec<JerboaError>),
     Other(Box<dyn std::error::Error>),
+}
+
+pub enum Capture<'a, T, S> {
+    Item(&'a T),
+    Result(S),
+    Option(Option<S>),
+    List(Vec<S>),
+}
+
+#[derive(Clone)]
+pub enum Match<T, S> {
+    Pred(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>),
+    Rule(Rc<Rule<T, S>>),
+    OptionRule(Rc<Rule<T, S>>),
+    ListRule(Rc<Rule<T, S>>),
+    RuleChoice(Vec<Rc<Rule<T, S>>>),
+    // TODO look ahead
+}
+
+#[derive(Clone)]
+pub struct Rule<T, S> { 
+    matches: Vec<Match<T, S>>,
+    transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError>>,
+}
+
+/*
+use std::rc::Rc;
+
+#[derive(Debug)]
+pub enum JerboaError {
+    UnexpectedEndOfInput(Box<str>),
+    RuleFailedToMatch(Box<str>),
+    Multi(Vec<JerboaError>),
+    Other(Box<dyn std::error::Error>),
     RuleNotFound(Box<str>),
 }
 
@@ -859,3 +893,4 @@ mod test {
         assert_eq!(output[0], 5);
     }
 }
+*/
