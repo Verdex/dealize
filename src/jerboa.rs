@@ -35,8 +35,8 @@ pub enum Match<T, S> {
     Rule(Rc<Rule<T, S>>),
     OptionRule(Rc<Rule<T, S>>),
     ListRule(Rc<Rule<T, S>>),
+    UntilRule(Rc<Rule<T, S>>, Rc<Rule<T, S>>),
     RuleChoice(Vec<Rc<Rule<T, S>>>),
-    // TODO look ahead
 }
 
 #[derive(Clone)]
