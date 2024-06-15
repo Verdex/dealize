@@ -119,15 +119,13 @@ pub fn parse<T, S>(mut input : &[T], rule: Rc<Rule<T, S>>) -> Result<Vec<S>, Jer
     Ok(results)
 }
 
-/*fn try_rule_choices<'a, T, S>( input : &'a [T]
-                             , names : &[Box<str>]
-                            
+fn try_rule_choices<'a, T, S>( input : &'a [T]
+                             , rules : &[Rc<Rule<T, S>>]
                              ) -> Result<(S, &'a [T]), JerboaError> {
 
     let mut errors = vec![];
-    for name in names {
-        let rule = get_rule(name, dictionary)?;
-        match try_rule(input, rule, dictionary) {
+    for rule in rules {
+        match try_rule(input, rule) {
             Ok((result, new_input)) => {
                 return Ok((result, new_input));
             },
@@ -136,7 +134,7 @@ pub fn parse<T, S>(mut input : &[T], rule: Rc<Rule<T, S>>) -> Result<Vec<S>, Jer
     }
 
     Err(JerboaError::Multi(errors))
-}*/
+}
 
 fn try_rule<'a, T, S>( mut input : &'a [T]
                      , rule : &Rc<Rule<T, S>>
@@ -156,79 +154,28 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 input = r;
             },
 
-            /*(_, Match::RuleChoice(names, MatchOpt::None)) => {
-                let (value, r) = try_rule_choices(input, names, dictionary)?;
-                captures.push(Capture::RuleResult(value));
+            (_, Match::RuleChoice(rules)) => {
+                let (value, r) = try_rule_choices(input, rules)?;
+                captures.push(Capture::Result(value));
                 input = r;
             },
 
-            // Option
-            (_, Match::Rule(name, MatchOpt::Option)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, dictionary).unwrap();
-                match try_rule(input, target_rule, dictionary) {
+            (_, Match::OptionRule(rule)) => {
+                match try_rule(input, rule) {
                     Ok((value, r)) => { 
-                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        captures.push(Capture::Option(Some(value)));
                         input = r;
                     },
                     Err(_) => {
-                        captures.push(Capture::OptionRuleResult(None));
+                        captures.push(Capture::Option(None));
                     },
                 }
             },
-            (_, Match::RuleChoice(names, MatchOpt::Option)) => {
-                match try_rule_choices(input, names, dictionary) {
-                    Ok((value, r)) => {
-                        captures.push(Capture::OptionRuleResult(Some(value)));
-                        input = r;
-                    },
-                    Err(_) => {
-                        captures.push(Capture::OptionRuleResult(None));
-                    }
-                }
-            },
 
-            // List
-            ([x, r @ ..], Match::Free(f, MatchOpt::List)) => {
-                let mut x = x;
-                let mut r = r;
-
-                let mut local = vec![];
-                while f(x) {
-                    local.push(x);      
-                    input = r;
-                    match input { 
-                        [x2, r2 @ ..] => { x = x2; r = r2; },
-                        _ => { break; },
-                    }
-                }
-                captures.push(Capture::List(local));
-            },
-            (_, Match::Free(_, MatchOpt::List)) => {
-                captures.push(Capture::List(vec![]));
-            },
-            ([x, r @ ..], Match::Context(f, MatchOpt::List)) => {
-                let mut x = x;
-                let mut r = r;
-
-                let mut local = vec![];
-                while f(x, &captures) {
-                    local.push(x);      
-                    input = r;
-                    match input { 
-                        [x2, r2 @ ..] => { x = x2; r = r2; },
-                        _ => { break; },
-                    }
-                }
-                captures.push(Capture::List(local));
-            },
-            (_, Match::Context(_, MatchOpt::List)) => {
-                captures.push(Capture::List(vec![]));
-            },
-            (_, Match::Rule(name, MatchOpt::List)) if has_rule(name, dictionary) => {
-                let target_rule = get_rule(name, dictionary).unwrap();
+            (_, Match::ListRule(rule)) => {
                 let mut local = vec![];
                 loop {
-                    match try_rule(input, target_rule, dictionary) {
+                    match try_rule(input, rule) {
                         Ok((value, r)) => { 
                             local.push(value);
                             input = r;
@@ -238,35 +185,18 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                         },
                     }
                 }
-                captures.push(Capture::ListRuleResult(local));
-            },
-            (_, Match::RuleChoice(names, MatchOpt::List)) => {
-                let mut local = vec![];
-                loop {
-                    match try_rule_choices(input, names, dictionary) {
-                        Ok((value, r)) => {
-                            local.push(value);
-                            input = r;
-                        },
-                        Err(_) => {
-                            break;
-                        },
-                    }
-                }
-                captures.push(Capture::ListRuleResult(local));
+                captures.push(Capture::List(local));
             },
 
+            // TODO until rule as well
+
             // Error
-            (_, Match::Rule(name, _)) if !has_rule(name, dictionary) => {
-                return Err(JerboaError::RuleNotFound(name.clone()));
-            },
             ([], _) => {
                 return Err(JerboaError::UnexpectedEndOfInput(rule.name.clone()));
             },
             (_, _) => { 
                 return Err(JerboaError::RuleFailedToMatch(rule.name.clone()));
-            },*/
-            _ => todo!(),
+            },
         }
     }
     Ok(((rule.transform)(captures)?, input))
