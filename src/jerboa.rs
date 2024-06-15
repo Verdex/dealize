@@ -103,6 +103,174 @@ impl<T, S> Rule<T, S> {
     }
 }
 
+pub fn parse<T, S>(mut input : &[T], rule: Rc<Rule<T, S>>) -> Result<Vec<S>, JerboaError> { 
+    let mut results = vec![];
+    while !input.is_empty() {
+        match try_rule(input, &rule) {
+            Ok((result, new_input)) => {
+                results.push(result);
+                input = new_input;
+            },
+            Err(e) => { return Err(e); },
+        }
+    } 
+    Ok(results)
+}
+
+/*fn try_rule_choices<'a, T, S>( input : &'a [T]
+                             , names : &[Box<str>]
+                            
+                             ) -> Result<(S, &'a [T]), JerboaError> {
+
+    let mut errors = vec![];
+    for name in names {
+        let rule = get_rule(name, dictionary)?;
+        match try_rule(input, rule, dictionary) {
+            Ok((result, new_input)) => {
+                return Ok((result, new_input));
+            },
+            Err(e) => { errors.push(e); },
+        }
+    }
+
+    Err(JerboaError::Multi(errors))
+}*/
+
+fn try_rule<'a, T, S>( mut input : &'a [T]
+                     , rule : &Rc<Rule<T, S>>
+
+                     ) -> Result<(S, &'a [T]), JerboaError> {
+
+    let mut captures = vec![];
+    for m in &rule.matches {
+        match (input, m) {
+            ([x, r @ ..], Match::Pred(f)) if f(x, &captures) => {
+                captures.push(Capture::Item(x));      
+                input = r;
+            },
+            (_, Match::Rule(rule)) => {
+                let (value, r) = try_rule(input, rule)?;
+                captures.push(Capture::Result(value));
+                input = r;
+            },
+
+            /*(_, Match::RuleChoice(names, MatchOpt::None)) => {
+                let (value, r) = try_rule_choices(input, names, dictionary)?;
+                captures.push(Capture::RuleResult(value));
+                input = r;
+            },
+
+            // Option
+            (_, Match::Rule(name, MatchOpt::Option)) if has_rule(name, dictionary) => {
+                let target_rule = get_rule(name, dictionary).unwrap();
+                match try_rule(input, target_rule, dictionary) {
+                    Ok((value, r)) => { 
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    },
+                }
+            },
+            (_, Match::RuleChoice(names, MatchOpt::Option)) => {
+                match try_rule_choices(input, names, dictionary) {
+                    Ok((value, r)) => {
+                        captures.push(Capture::OptionRuleResult(Some(value)));
+                        input = r;
+                    },
+                    Err(_) => {
+                        captures.push(Capture::OptionRuleResult(None));
+                    }
+                }
+            },
+
+            // List
+            ([x, r @ ..], Match::Free(f, MatchOpt::List)) => {
+                let mut x = x;
+                let mut r = r;
+
+                let mut local = vec![];
+                while f(x) {
+                    local.push(x);      
+                    input = r;
+                    match input { 
+                        [x2, r2 @ ..] => { x = x2; r = r2; },
+                        _ => { break; },
+                    }
+                }
+                captures.push(Capture::List(local));
+            },
+            (_, Match::Free(_, MatchOpt::List)) => {
+                captures.push(Capture::List(vec![]));
+            },
+            ([x, r @ ..], Match::Context(f, MatchOpt::List)) => {
+                let mut x = x;
+                let mut r = r;
+
+                let mut local = vec![];
+                while f(x, &captures) {
+                    local.push(x);      
+                    input = r;
+                    match input { 
+                        [x2, r2 @ ..] => { x = x2; r = r2; },
+                        _ => { break; },
+                    }
+                }
+                captures.push(Capture::List(local));
+            },
+            (_, Match::Context(_, MatchOpt::List)) => {
+                captures.push(Capture::List(vec![]));
+            },
+            (_, Match::Rule(name, MatchOpt::List)) if has_rule(name, dictionary) => {
+                let target_rule = get_rule(name, dictionary).unwrap();
+                let mut local = vec![];
+                loop {
+                    match try_rule(input, target_rule, dictionary) {
+                        Ok((value, r)) => { 
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
+            (_, Match::RuleChoice(names, MatchOpt::List)) => {
+                let mut local = vec![];
+                loop {
+                    match try_rule_choices(input, names, dictionary) {
+                        Ok((value, r)) => {
+                            local.push(value);
+                            input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                captures.push(Capture::ListRuleResult(local));
+            },
+
+            // Error
+            (_, Match::Rule(name, _)) if !has_rule(name, dictionary) => {
+                return Err(JerboaError::RuleNotFound(name.clone()));
+            },
+            ([], _) => {
+                return Err(JerboaError::UnexpectedEndOfInput(rule.name.clone()));
+            },
+            (_, _) => { 
+                return Err(JerboaError::RuleFailedToMatch(rule.name.clone()));
+            },*/
+            _ => todo!(),
+        }
+    }
+    Ok(((rule.transform)(captures)?, input))
+}
+
+
 
 /*
 use std::rc::Rc;
