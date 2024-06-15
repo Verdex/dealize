@@ -188,7 +188,28 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::List(local));
             },
 
-            // TODO until rule as well
+            (_, Match::UntilRule(rule, until)) => {
+                let mut local_input = input;
+                let mut local = vec![];
+                loop {
+                    match try_rule(local_input, rule) {
+                        Ok((value, r)) => { 
+                            local.push(value);
+                            local_input = r;
+                        },
+                        Err(_) => {
+                            break;
+                        },
+                    }
+                }
+                match try_rule(local_input, until) {
+                    Ok(_) => {
+                        captures.push(Capture::List(local));
+                        input = local_input;
+                    },
+                    e => { return e; },
+                }
+            },
 
             // Error
             ([], _) => {
