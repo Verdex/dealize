@@ -41,6 +41,7 @@ pub enum Match<T, S> {
 
 #[derive(Clone)]
 pub struct Rule<T, S> { 
+    name : Box<str>,
     matches: Vec<Match<T, S>>,
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError>>,
 }
@@ -94,12 +95,13 @@ impl<T, S> Match<T, S> {
 }
 
 impl<T, S> Rule<T, S> {
-    pub fn new<F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
+    pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (matches : Vec<Match<T, S>>, transform : F) -> Rc<Self>
+        (name : N, matches : Vec<Match<T, S>>, transform : F) -> Rc<Self>
         
     {
-        Rc::new(Rule { matches, transform: Rc::new(transform) })
+        let name : Box<str> = name.as_ref().into();
+        Rc::new(Rule { name, matches, transform: Rc::new(transform) })
     }
 }
 
