@@ -94,22 +94,13 @@ impl<T, S> Match<T, S> {
 }
 
 impl<T, S> Rule<T, S> {
-    // TODO cons with Rc
-    /*pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
+    pub fn new<F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
     
-        (name : N, matches : Vec<Match<T, S>>, transform : F) -> Self
+        (matches : Vec<Match<T, S>>, transform : F) -> Rc<Self>
         
     {
-        Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
+        Rc::new(Rule { matches, transform: Rc::new(transform) })
     }
-
-    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
-    
-        (name : N, matches : [Match<T, S>; RL], transform : F) -> Self
-        
-    {
-        Rule { name: name.as_ref().into(), matches: matches.into_iter().collect(), transform: Rc::new(transform) }
-    }*/
 }
 
 
