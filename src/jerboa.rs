@@ -45,6 +45,74 @@ pub struct Rule<T, S> {
     transform : Rc<dyn for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError>>,
 }
 
+impl<'a, T, S> Capture<'a, T, S> {
+    pub fn unwrap(self) -> Option<&'a T> {
+        match self {
+            Capture::Item(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_result(self) -> Option<S> {
+        match self {
+            Capture::Result(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_option(self) -> Option<Option<S>> {
+        match self {
+            Capture::Option(x) => Some(x),
+            _ => None,
+        }
+    }
+    pub fn unwrap_list(self) -> Option<Vec<S>> {
+        match self {
+            Capture::List(x) => Some(x),
+            _ => None,
+        }
+    }
+}
+
+impl<T, S> Match<T, S> {
+    pub fn pred<F : for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool + 'static>( f : F ) -> Self {
+        Match::Pred(Rc::new(f))
+    }
+    pub fn rule(r : &Rc<Rule<T, S>>) -> Self {
+        Match::Rule(Rc::clone(r))
+    }
+    pub fn choice(rs : &[&Rc<Rule<T, S>>]) -> Self {
+        Match::RuleChoice(rs.iter().map(|x| Rc::clone(x)).collect())
+    }
+    pub fn option(r : &Rc<Rule<T, S>>) -> Self {
+        Match::OptionRule(Rc::clone(r))
+    }
+    pub fn list(r : &Rc<Rule<T, S>>) -> Self {
+        Match::ListRule(Rc::clone(r))
+    }
+    pub fn until(r : &Rc<Rule<T, S>>, u : &Rc<Rule<T, S>>) -> Self {
+        Match::UntilRule(Rc::clone(r), Rc::clone(u))
+    }
+}
+
+impl<T, S> Rule<T, S> {
+    // TODO cons with Rc
+    /*pub fn new<N : AsRef<str>, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
+    
+        (name : N, matches : Vec<Match<T, S>>, transform : F) -> Self
+        
+    {
+        Rule { name: name.as_ref().into(), matches, transform: Rc::new(transform) }
+    }
+
+    pub fn fixed<N : AsRef<str>, const RL : usize, F : for<'a> Fn(Vec<Capture<'a, T, S>>) -> Result<S, JerboaError> + 'static>
+    
+        (name : N, matches : [Match<T, S>; RL], transform : F) -> Self
+        
+    {
+        Rule { name: name.as_ref().into(), matches: matches.into_iter().collect(), transform: Rc::new(transform) }
+    }*/
+}
+
+
 /*
 use std::rc::Rc;
 
