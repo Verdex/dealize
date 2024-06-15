@@ -9,6 +9,19 @@ pub enum JerboaError {
     Other(Box<dyn std::error::Error>),
 }
 
+impl std::fmt::Display for JerboaError {
+    fn fmt(&self, f : &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            JerboaError::UnexpectedEndOfInput(n) => write!(f, "Unexpected end of input in rule: {}", n),
+            JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
+            JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
+            JerboaError::Other(e) => write!(f, "Other Error Encountered {:?}", e),
+        }
+    }
+}
+
+impl std::error::Error for JerboaError { }
+
 pub enum Capture<'a, T, S> {
     Item(&'a T),
     Result(S),
