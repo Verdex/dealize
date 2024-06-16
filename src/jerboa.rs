@@ -270,6 +270,53 @@ mod test {
 
         assert_eq!(output, [true, true]);
     }
+
+    #[test]
+    fn should_parse_option_rule() {
+        let input = "aab".chars().collect::<Vec<_>>();
+
+        let ap = Match::pred(|v, _| *v == 'a');
+        let bp = Match::pred(|v, _| *v == 'b');
+        let rb = Rule::new("b-rule", vec![bp], |_| Ok(true));
+        let ra = Rule::new("ab-rule", vec![ap, Match::option(&rb)], |_| Ok(true));
+
+        let output = parse(&input, ra).unwrap();
+
+        assert_eq!(output, [true, true]);
+    }
+
+    #[test]
+    fn should_parse_list_rule() {
+        let input = "abbb".chars().collect::<Vec<_>>();
+
+        let ap = Match::pred(|v, _| *v == 'a');
+        let bp = Match::pred(|v, _| *v == 'b');
+        let rb = Rule::new("b-rule", vec![bp], |_| Ok(true));
+        let ra = Rule::new("ab*-rule", vec![ap, Match::list(&rb)], |_| Ok(true));
+
+        let output = parse(&input, ra).unwrap();
+
+        assert_eq!(output, [true]);
+    }
+
+    #[test]
+    fn should_parse_until_rule() {
+        let input = "aaaaab".chars().collect::<Vec<_>>();
+
+        let ap = Match::pred(|v, _| *v == 'a');
+        let bp = Match::pred(|v, _| *v == 'b');
+        let rb = Rule::new("b-rule", vec![bp], |_| Ok(true));
+        let ra = Rule::new("a-rule", vec![ap], |_| Ok(true));
+        let r = Rule::new("a*b-rule", vec![Match::until(&ra, &rb)], |_| Ok(true));
+        // Note: rb is first because until input is not consumed in until matcher
+        // This means that if r rule is first in the choice then after consumeing the 
+        // a*b rule, that rule will continue to be used to consume zero input forever.
+        let rc = Rule::new("or-rule", vec![Match::choice(&[&rb, &r])], |_| Ok(true));
+
+        let output = parse(&input, rc).unwrap();
+
+        assert_eq!(output, [true, true]);
+    }
 }
 
 
