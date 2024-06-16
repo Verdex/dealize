@@ -189,6 +189,12 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
             },
 
             (_, Match::UntilRule(rule, until)) => {
+
+                if try_rule(input, until).is_ok() {
+                    captures.push(Capture::List(vec![]));
+                    continue;
+                }
+
                 let mut local_input = input;
                 let mut local = vec![];
                 loop {
@@ -196,18 +202,17 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                         Ok((value, r)) => { 
                             local.push(value);
                             local_input = r;
+
+                            if try_rule(local_input, until).is_ok() {
+                                captures.push(Capture::List(local));
+                                input = local_input;
+                                break;
+                            }
                         },
                         Err(_) => {
-                            break;
+                            return Err(JerboaError::RuleFailedToMatch(rule.name.clone()));
                         },
                     }
-                }
-                match try_rule(local_input, until) {
-                    Ok(_) => {
-                        captures.push(Capture::List(local));
-                        input = local_input;
-                    },
-                    e => { return e; },
                 }
             },
 
