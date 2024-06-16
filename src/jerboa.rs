@@ -142,7 +142,7 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                      ) -> Result<(S, &'a [T]), JerboaError> {
 
     let mut captures = vec![];
-    for m in &rule.matches {
+    'match_loop: for m in &rule.matches {
         match (input, m) {
             ([x, r @ ..], Match::Pred(f)) if f(x, &captures) => {
                 captures.push(Capture::Item(x));      
@@ -174,14 +174,14 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
 
             (_, Match::ListRule(rule)) => {
                 let mut local = vec![];
-                loop {
+                'list_loop: loop {
                     match try_rule(input, rule) {
                         Ok((value, r)) => { 
                             local.push(value);
                             input = r;
                         },
                         Err(_) => {
-                            break;
+                            break 'list_loop;
                         },
                     }
                 }
@@ -192,12 +192,12 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
 
                 if try_rule(input, until).is_ok() {
                     captures.push(Capture::List(vec![]));
-                    continue;
+                    continue 'match_loop;
                 }
 
                 let mut local_input = input;
                 let mut local = vec![];
-                loop {
+               'until_loop: loop {
                     match try_rule(local_input, rule) {
                         Ok((value, r)) => { 
                             local.push(value);
@@ -206,7 +206,7 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                             if try_rule(local_input, until).is_ok() {
                                 captures.push(Capture::List(local));
                                 input = local_input;
-                                break;
+                                break 'until_loop;
                             }
                         },
                         Err(_) => {
