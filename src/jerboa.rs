@@ -228,6 +228,49 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
     Ok(((rule.transform)(captures)?, input))
 }
 
+#[cfg(test)] 
+mod test {
+    use super::*;
+
+    #[test]
+    fn should_parse_single_predicate() {
+        let input = "aaa".chars().collect::<Vec<_>>();
+
+        let p = Match::pred(|v, _| *v == 'a');
+        let r = Rule::new("a-rule", vec![p], |_| Ok(true));
+
+        let output = parse(&input, r).unwrap();
+
+        assert_eq!(output, [true, true, true]);
+    }
+
+    #[test]
+    fn should_parse_double_predicate() {
+        let input = "abab".chars().collect::<Vec<_>>();
+
+        let ap = Match::pred(|v, _| *v == 'a');
+        let bp = Match::pred(|v, _| *v == 'b');
+        let r = Rule::new("ab-rule", vec![ap, bp], |_| Ok(true));
+
+        let output = parse(&input, r).unwrap();
+
+        assert_eq!(output, [true, true]);
+    }
+
+    #[test]
+    fn should_parse_rule() {
+        let input = "abab".chars().collect::<Vec<_>>();
+
+        let ap = Match::pred(|v, _| *v == 'a');
+        let bp = Match::pred(|v, _| *v == 'b');
+        let rb = Rule::new("b-rule", vec![bp], |_| Ok(true));
+        let ra = Rule::new("ab-rule", vec![ap, Match::rule(&rb)], |_| Ok(true));
+
+        let output = parse(&input, ra).unwrap();
+
+        assert_eq!(output, [true, true]);
+    }
+}
 
 
 /*
