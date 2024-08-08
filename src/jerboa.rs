@@ -1,5 +1,6 @@
 
 use std::rc::Rc;
+use std::cell::RefCell;
 
 #[derive(Debug)]
 pub enum JerboaError {
@@ -30,6 +31,12 @@ pub enum Capture<'a, T, S> {
 }
 
 #[derive(Clone)]
+pub enum LateBound<T, S> {
+    Index(usize),
+    Rule(Rc<Rule<T, S>>),
+}
+
+#[derive(Clone)]
 pub enum Match<T, S> {
     Pred(Rc<dyn for<'a> Fn(&T, &[Capture<'a, T, S>]) -> bool>),
     Rule(Rc<Rule<T, S>>),
@@ -37,6 +44,7 @@ pub enum Match<T, S> {
     ListRule(Rc<Rule<T, S>>),
     UntilRule(Rc<Rule<T, S>>, Rc<Rule<T, S>>),
     RuleChoice(Vec<Rc<Rule<T, S>>>),
+    LateBoundRule(RefCell<LateBound<T, S>>),
 }
 
 #[derive(Clone)]
@@ -80,6 +88,9 @@ impl<T, S> Match<T, S> {
     pub fn rule(r : &Rc<Rule<T, S>>) -> Self {
         Match::Rule(Rc::clone(r))
     }
+    pub fn late(index : usize) -> Self {
+        Match::LateBoundRule(RefCell::new(LateBound::Index(index)))
+    }
     pub fn choice(rs : &[&Rc<Rule<T, S>>]) -> Self {
         Match::RuleChoice(rs.iter().map(|x| Rc::clone(x)).collect())
     }
@@ -102,6 +113,20 @@ impl<T, S> Rule<T, S> {
     {
         let name : Box<str> = name.as_ref().into();
         Rc::new(Rule { name, matches, transform: Rc::new(transform) })
+    }
+
+    pub fn bind(&mut self, rules : &[&Rc<Rule<T, S>>]) {
+        for m in &self.matches {
+            match m {
+                Match::LateBoundRule(r) => {
+                    r.replace_with(|r| match r {
+                        LateBound::Index(i) => LateBound::Rule(Rc::clone(rules[*i])),
+                        LateBound::Rule(r) => panic!("Attempt to rebind rule: {}", r.name),
+                    });
+                },
+                _ => { },
+            }
+        }
     }
 }
 
