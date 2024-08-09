@@ -372,4 +372,20 @@ mod test {
 
         assert_eq!(output, [true, true]);
     }
+
+    #[test]
+    fn should_parse_recursive_late_bound_rule() {
+        let input = "aaab".chars().collect::<Vec<_>>();
+        
+        let rb = Rule::new("rb", vec![Match::pred(|v, _| *v == 'b')], |_| Ok(true));
+        let d = Rule::new("d", vec![Match::late(0)], |_| Ok(true));
+        let choice = Rule::new("choice", vec![Match::choice(&[&rb, &d])], |_| Ok(true));
+        let ra = Rule::new("ra", vec![Match::pred(|v, _| *v == 'a'), Match::rule(&choice)], |_| Ok(true));
+
+        d.bind(&[&ra]);
+
+        let output = parse(&input, choice).unwrap();
+
+        assert_eq!(output, [true]);
+    }
 }
