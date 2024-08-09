@@ -117,7 +117,7 @@ impl<T, S> Rule<T, S> {
         Rc::new(Rule { name, matches, transform: Rc::new(transform) })
     }
 
-    pub fn bind(&mut self, rules : &[&Rc<Rule<T, S>>]) {
+    pub fn bind(&self, rules : &[&Rc<Rule<T, S>>]) {
         for m in &self.matches {
             match m {
                 Match::LateBoundRule(r) => {
@@ -175,12 +175,26 @@ fn try_rule<'a, T, S>( mut input : &'a [T]
                 captures.push(Capture::Item(x));      
                 input = r;
             },
+
             (_, Match::Rule(rule)) => {
                 let (value, r) = try_rule(input, rule)?;
                 captures.push(Capture::Result(value));
                 input = r;
             },
 
+            (_, Match::LateBoundRule(x)) => {
+                match &*x.borrow() {
+                    LateBound::Rule(rule) => {
+                        let (value, r) = try_rule(input, &rule)?;
+                        captures.push(Capture::Result(value));
+                        input = r;
+                    },
+                    LateBound::Index(i) => {
+                        return Err(JerboaError::UnboundRuleIndex(*i));
+                    },
+                }
+            },
+            
             (_, Match::RuleChoice(rules)) => {
                 let (value, r) = try_rule_choices(input, rules)?;
                 captures.push(Capture::Result(value));
