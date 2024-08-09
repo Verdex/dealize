@@ -7,6 +7,7 @@ pub enum JerboaError {
     UnexpectedEndOfInput(Box<str>),
     RuleFailedToMatch(Box<str>),
     Multi(Vec<JerboaError>),
+    UnboundRuleIndex(usize),
     Other(Box<dyn std::error::Error>),
 }
 
@@ -16,6 +17,7 @@ impl std::fmt::Display for JerboaError {
             JerboaError::UnexpectedEndOfInput(n) => write!(f, "Unexpected end of input in rule: {}", n),
             JerboaError::RuleFailedToMatch(n) => write!(f, "Rule:  {} failed to match", n),
             JerboaError::Multi(errors) => write!(f, "Multiple Rule Failure {:?}", errors),
+            JerboaError::UnboundRuleIndex(index) => write!(f, "Encountered unbound rule with index {}", index),
             JerboaError::Other(e) => write!(f, "Other Error Encountered {:?}", e),
         }
     }
