@@ -358,4 +358,18 @@ mod test {
 
         assert_eq!(output, [true, true]);
     }
+
+    #[test]
+    fn should_parse_late_bound_rule() {
+        let input = "aa".chars().collect::<Vec<_>>();
+        
+        let ra = Rule::new("ra", vec![Match::pred(|v, _| *v == 'a')], |_| Ok(true));
+        let r = Rule::new("r", vec![Match::late(0)], |_| Ok(true));
+
+        r.bind(&[&ra]);
+
+        let output = parse(&input, r).unwrap();
+
+        assert_eq!(output, [true, true]);
+    }
 }
